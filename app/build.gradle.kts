@@ -73,4 +73,6 @@ dependencies {
     implementation("io.insert-koin:koin-androidx-compose:4.0.2")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
 }
