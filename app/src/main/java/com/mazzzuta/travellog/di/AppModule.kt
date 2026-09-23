@@ -6,6 +6,8 @@ import com.mazzzuta.travellog.database.EntryRepository
 import com.mazzzuta.travellog.database.TripRepository
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
+import com.mazzzuta.travellog.viewmodels.FeedViewModel
+import org.koin.androidx.viewmodel.dsl.viewModel
 
 val appModule = module {
 
@@ -24,4 +26,6 @@ val appModule = module {
 
     single { EntryRepository(get(), get(), get()) }
     single { TripRepository(get()) }
+
+    viewModel { FeedViewModel(get()) }
 }
