@@ -39,4 +39,5 @@ class EntryRepository(
     fun getTotalEntriesCount(): Flow<Int> = entryDao.getTotalEntriesCount()
     fun getTagUsageStats(): Flow<List<TagCount>> = tagDao.getTagUsageStats()
     fun getAllTags(): Flow<List<TagEntity>> = tagDao.getAllTags()
+    suspend fun createTag(name: String): Long = tagDao.insert(TagEntity(name = name))
 }

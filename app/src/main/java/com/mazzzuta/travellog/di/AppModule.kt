@@ -9,6 +9,11 @@ import org.koin.dsl.module
 import com.mazzzuta.travellog.viewmodels.FeedViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 
+import com.mazzzuta.travellog.utils.GeocoderHelper
+import com.mazzzuta.travellog.utils.LocationHelper
+import com.mazzzuta.travellog.utils.PhotoStorageHelper
+import com.mazzzuta.travellog.viewmodels.CreateEntryViewModel
+
 val appModule = module {
 
     single {
@@ -28,4 +33,10 @@ val appModule = module {
     single { TripRepository(get()) }
 
     viewModel { FeedViewModel(get()) }
+
+    single { GeocoderHelper(androidContext()) }
+    single { LocationHelper(androidContext()) }
+    single { PhotoStorageHelper(androidContext()) }
+
+    viewModel { CreateEntryViewModel(get(), get(), get(), get(), get()) }
 }

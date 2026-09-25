@@ -1,9 +1,190 @@
 package com.mazzzuta.travellog.ui.createentry
 
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import com.mazzzuta.travellog.viewmodels.CreateEntryViewModel
+import org.koin.androidx.compose.koinViewModel
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.ui.draw.clip
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CreateEntryScreen(onSaved: () -> Unit, onCancel: () -> Unit) {
-    Text("Create Entry Screen")
+fun CreateEntryScreen(
+    onSaved: () -> Unit,
+    onCancel: () -> Unit,
+    viewModel: CreateEntryViewModel = koinViewModel()
+) {
+    val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.isSaved) {
+        if (state.isSaved) onSaved()
+    }
+
+    LaunchedEffect(state.titleError) {
+        state.titleError?.let { snackbarHostState.showSnackbar(it) }
+    }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 5)
+    ) { uris -> uris.forEach { viewModel.onPhotoPicked(it.toString()) } }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) viewModel.detectLocation() }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 48.dp, bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onCancel) { Icon(Icons.Default.ArrowBack, contentDescription = "Назад") }
+                Text("Новая запись", fontWeight = FontWeight.ExtraBold)
+                Button(onClick = { viewModel.save() }, enabled = !state.isSaving) {
+                    Text(if (state.isSaving) "..." else "Сохранить")
+                }
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
+        ) {
+            // Фотографии
+            Text(
+                "ФОТОГРАФИИ",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(start = 20.dp, bottom = 12.dp)
+            )
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(state.photoUris) { uri ->
+                    AsyncImage(
+                        model = uri, contentDescription = null,
+                        modifier = Modifier.size(96.dp).clip(RoundedCornerShape(16.dp))
+                    )
+                }
+                item {
+                    OutlinedButton(
+                        onClick = { photoPickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                        modifier = Modifier.size(96.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.CameraAlt, contentDescription = null)
+                            Text("Добавить", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // Название с валидацией
+            OutlinedTextField(
+                value = state.title,
+                onValueChange = viewModel::onTitleChanged,
+                placeholder = { Text("Название записи *") },
+                isError = state.titleError != null,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                textStyle = MaterialTheme.typography.headlineSmall
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // Описание
+            OutlinedTextField(
+                value = state.description,
+                onValueChange = viewModel::onDescriptionChanged,
+                placeholder = { Text("Напиши что-нибудь об этом месте...") },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                minLines = 4
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            // Теги
+            Text("ТЕГИ", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 20.dp, bottom = 12.dp))
+            FlowRow(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                state.availableTags.forEach { tag ->
+                    FilterChip(
+                        selected = tag.id in state.selectedTagIds,
+                        onClick = { viewModel.toggleTag(tag.id) },
+                        label = { Text(tag.name) }
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(modifier = Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = state.newTagName,
+                    onValueChange = viewModel::onNewTagNameChanged,
+                    placeholder = { Text("Новый тег...") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+                IconButton(onClick = { viewModel.addNewTag() }) {
+                    Icon(Icons.Default.Add, contentDescription = "Добавить тег")
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Локация
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.LocationOn, contentDescription = null)
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = state.placeName ?: "Определить автоматически",
+                    modifier = Modifier.weight(1f)
+                )
+                if (state.isDetectingLocation) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                } else {
+                    TextButton(onClick = {
+                        val hasPermission = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        if (hasPermission) viewModel.detectLocation()
+                        else locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    }) {
+                        Text("Определить")
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
+        }
+    }
 }
