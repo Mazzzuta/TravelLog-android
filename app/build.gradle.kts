@@ -36,10 +36,10 @@ android {
     buildFeatures {
         compose = true
     }
+}
 
-    kotlin {
-        jvmToolchain(11)
-    }
+kotlin {
+    jvmToolchain(11)
 }
 
 dependencies {
@@ -75,4 +75,5 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     implementation("androidx.compose.material:material-icons-extended:1.7.5")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 }
