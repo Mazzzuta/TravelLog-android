@@ -29,6 +29,7 @@ data class CreateEntryUiState(
     val titleError: String? = null,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
+    val locationSearchError: String? = null,
 )
 
 class CreateEntryViewModel(
@@ -84,6 +85,7 @@ class CreateEntryViewModel(
 
     fun detectLocation() {
         viewModelScope.launch {
+
             _uiState.update { it.copy(isDetectingLocation = true) }
             val location = locationHelper.getCurrentLocation()
             if (location != null) {
@@ -123,6 +125,23 @@ class CreateEntryViewModel(
             )
             repository.createEntry(entry, savedPaths, state.selectedTagIds.toList())
             _uiState.update { it.copy(isSaving = false, isSaved = true) }
+        }
+    }
+
+    fun searchLocationByName(query: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDetectingLocation = true, locationSearchError = null) }
+            val result = geocoderHelper.searchPlace(query)
+            if (result != null) {
+                val (lat, lng, name) = result
+                _uiState.update {
+                    it.copy(latitude = lat, longitude = lng, placeName = name, isDetectingLocation = false)
+                }
+            } else {
+                _uiState.update {
+                    it.copy(isDetectingLocation = false, locationSearchError = "Место не найдено, попробуй уточнить запрос")
+                }
+            }
         }
     }
 }

@@ -36,4 +36,30 @@ class GeocoderHelper(context: Context) {
             }
         }
     }
+
+    suspend fun searchPlace(query: String): Triple<Double, Double, String>? {
+        if (!Geocoder.isPresent() || query.isBlank()) return null
+        val address = searchAddress(query) ?: return null
+        val city = address.locality ?: address.subAdminArea ?: address.adminArea
+        val country = address.countryName
+        val name = listOfNotNull(city, country).joinToString(", ").ifBlank { query }
+        return Triple(address.latitude, address.longitude, name)
+    }
+
+    private suspend fun searchAddress(query: String): Address? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            suspendCancellableCoroutine { continuation ->
+                geocoder.getFromLocationName(query, 1) { addresses ->
+                    continuation.resume(addresses.firstOrNull())
+                }
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            try {
+                geocoder.getFromLocationName(query, 1)?.firstOrNull()
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
 }
