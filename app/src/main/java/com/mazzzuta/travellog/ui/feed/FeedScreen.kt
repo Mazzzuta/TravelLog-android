@@ -1,5 +1,9 @@
 package com.mazzzuta.travellog.ui.feed
 
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -109,28 +113,58 @@ fun FeedScreen(
 @Composable
 private fun EntryCard(entryWithDetails: EntryWithDetails, onClick: () -> Unit) {
     val entry = entryWithDetails.entry
+    val firstPhoto = entryWithDetails.photos.firstOrNull()?.filePath
+
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().height(200.dp),
         shape = RoundedCornerShape(20.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.Bottom
-        ) {
-            if (entryWithDetails.tags.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    entryWithDetails.tags.forEach { tag ->
-                        AssistChip(onClick = {}, label = { Text(tag.name, style = MaterialTheme.typography.labelSmall) })
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (firstPhoto != null) {
+                AsyncImage(
+                    model = firstPhoto,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
+                                startY = 100f
+                            )
+                        )
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
+            }
+
+            Column(
+                modifier = Modifier.fillMaxSize().padding(16.dp).align(Alignment.BottomStart),
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                if (entryWithDetails.tags.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        entryWithDetails.tags.forEach { tag ->
+                            AssistChip(onClick = {}, label = { Text(tag.name, style = MaterialTheme.typography.labelSmall) })
+                        }
                     }
+                    Spacer(Modifier.height(6.dp))
                 }
-                Spacer(Modifier.height(6.dp))
+                entry.placeName?.let {
+                    Text(it, style = MaterialTheme.typography.labelMedium, color = Color.White)
+                    Spacer(Modifier.height(4.dp))
+                }
+                Text(
+                    entry.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
             }
-            entry.placeName?.let {
-                Text(it, style = MaterialTheme.typography.labelMedium)
-                Spacer(Modifier.height(4.dp))
-            }
-            Text(entry.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
         }
     }
 }
