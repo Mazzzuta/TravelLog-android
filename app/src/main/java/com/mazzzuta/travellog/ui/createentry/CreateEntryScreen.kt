@@ -162,26 +162,73 @@ fun CreateEntryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .padding(bottom = 12.dp),
+                    .padding(bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Default.LocationOn, contentDescription = null)
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = state.placeName ?: "Определить автоматически",
+                    text = state.placeName ?: "Место не указано",
                     modifier = Modifier.weight(1f)
                 )
                 if (state.isDetectingLocation) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp))
-                } else {
-                    TextButton(onClick = {
+                }
+            }
+
+            var showLocationSearch by remember { mutableStateOf(false) }
+            var searchQuery by remember { mutableStateOf("") }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
                         val hasPermission = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
                         if (hasPermission) viewModel.detectLocation()
                         else locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                    }) {
-                        Text("Определить")
-                    }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = !state.isDetectingLocation
+                ) {
+                    Text("Автоматически")
                 }
+                OutlinedButton(
+                    onClick = { showLocationSearch = true },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Ввести вручную")
+                }
+            }
+
+            if (showLocationSearch) {
+                AlertDialog(
+                    onDismissRequest = { showLocationSearch = false },
+                    title = { Text("Введите место") },
+                    text = {
+                        Column {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = { Text("Например: Санторини, Греция") },
+                                singleLine = true
+                            )
+                            state.locationSearchError?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            viewModel.searchLocationByName(searchQuery)
+                            showLocationSearch = false
+                        }) { Text("Найти") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showLocationSearch = false }) { Text("Отмена") }
+                    }
+                )
             }
 
             Spacer(Modifier.height(32.dp))

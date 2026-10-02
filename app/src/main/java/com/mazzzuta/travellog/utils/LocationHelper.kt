@@ -12,7 +12,7 @@ class LocationHelper(context: Context) {
 
     private val client = LocationServices.getFusedLocationProviderClient(context)
 
-    @SuppressLint("MissingPermission") // разрешение проверяется на экране перед вызовом
+    @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): Location? {
         return try {
             val request = CurrentLocationRequest.Builder()
