@@ -13,6 +13,7 @@ import com.mazzzuta.travellog.utils.GeocoderHelper
 import com.mazzzuta.travellog.utils.LocationHelper
 import com.mazzzuta.travellog.utils.PhotoStorageHelper
 import com.mazzzuta.travellog.viewmodels.CreateEntryViewModel
+import com.mazzzuta.travellog.viewmodels.EntryDetailViewModel
 
 val appModule = module {
 
@@ -33,6 +34,7 @@ val appModule = module {
     single { TripRepository(get()) }
 
     viewModel { FeedViewModel(get()) }
+    viewModel { (entryId: Long) -> EntryDetailViewModel(entryId, get()) }
 
     single { GeocoderHelper(androidContext()) }
     single { LocationHelper(androidContext()) }
