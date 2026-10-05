@@ -57,7 +57,7 @@ fun CreateEntryScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 48.dp, bottom = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 8.dp, bottom = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {

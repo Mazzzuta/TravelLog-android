@@ -1,6 +1,7 @@
 package com.mazzzuta.travellog.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,7 +51,8 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
         NavHost(
             navController = navController,
             startDestination = Route.Feed,
-            modifier = Modifier.padding(bottom = if (showBottomBar) padding.calculateBottomPadding() else 0.dp)
+            modifier = Modifier.statusBarsPadding()
+                .padding(bottom = if (showBottomBar) padding.calculateBottomPadding() else 0.dp)
         ) {
             composable<Route.Feed> {
                 FeedScreen(

@@ -44,7 +44,7 @@ interface EntryDao {
 
     @Transaction
     @Query("SELECT * FROM entries WHERE id = :entryId")
-    fun getEntryWithDetails(entryId: Long): Flow<EntryWithDetails>
+    fun getEntryWithDetails(entryId: Long): Flow<EntryWithDetails?>
 
     // данные для экрана статистики — столбчатый график по месяцам
     @Query("SELECT strftime('%Y-%m', date/1000, 'unixepoch') as month, COUNT(*) as count FROM entries GROUP BY month ORDER BY month")

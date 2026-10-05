@@ -46,6 +46,11 @@ import coil3.compose.AsyncImage
 import com.mazzzuta.travellog.viewmodels.EntryDetailViewModel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun EntryDetailScreen(
@@ -85,9 +90,27 @@ fun EntryDetailScreen(
                     )
                 }
                 if (photos.size > 1) {
+                    val scope = rememberCoroutineScope()
                     Row(
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 6.dp)
+                            // область нажатия шире самих кружков, чтобы удобно было зажимать пальцем
+                            .pointerInput(photos.size) {
+                                detectTapGestures { offset ->
+                                    val page = (offset.x / size.width * photos.size).toInt().coerceIn(0, photos.size - 1)
+                                    scope.launch { pagerState.animateScrollToPage(page) }
+                                }
+                            }
+                            .pointerInput(photos.size) {
+                                detectHorizontalDragGestures { change, _ ->
+                                    val page = (change.position.x / size.width * photos.size).toInt().coerceIn(0, photos.size - 1)
+                                    scope.launch { pagerState.scrollToPage(page) }
+                                }
+                            }
+                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         photos.indices.forEach { index ->
                             Box(
@@ -110,7 +133,7 @@ fun EntryDetailScreen(
                 onClick = onBack,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(top = 44.dp, start = 20.dp)
+                    .padding(top = 12.dp, start = 20.dp)
                     .background(Color.Black.copy(alpha = 0.5f), CircleShape)
             ) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Назад", tint = Color.White)

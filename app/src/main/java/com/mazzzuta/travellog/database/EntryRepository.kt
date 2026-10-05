@@ -16,7 +16,7 @@ class EntryRepository(
     ): Flow<List<EntryWithDetails>> =
         entryDao.searchEntries(query, tripId, dateFrom, dateTo, sortBy)
 
-    fun getEntryWithDetails(entryId: Long): Flow<EntryWithDetails> =
+    fun getEntryWithDetails(entryId: Long): Flow<EntryWithDetails?> =
         entryDao.getEntryWithDetails(entryId)
 
     suspend fun createEntry(entry: EntryEntity, photoPaths: List<String>, tagIds: List<Long>): Long {

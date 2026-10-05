@@ -41,7 +41,7 @@ fun FeedScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        Column(modifier = Modifier.padding(horizontal = 20.dp).padding(top = 48.dp, bottom = 12.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 20.dp).padding(top = 16.dp, bottom = 12.dp)) {
             Text(
                 text = "TRAVEL LOG",
                 style = MaterialTheme.typography.labelSmall,
