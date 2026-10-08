@@ -30,6 +30,8 @@ import com.mazzzuta.travellog.database.EntryWithDetails
 import com.mazzzuta.travellog.viewmodels.FeedViewModel
 import com.mazzzuta.travellog.viewmodels.SortOption
 import org.koin.androidx.compose.koinViewModel
+import com.mazzzuta.travellog.utils.LocalDateFormat
+import com.mazzzuta.travellog.utils.formatDate
 
 @Composable
 fun FeedScreen(
@@ -163,6 +165,11 @@ private fun EntryCard(entryWithDetails: EntryWithDetails, onClick: () -> Unit) {
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White
+                )
+                Text(
+                    formatDate(entry.date, LocalDateFormat.current),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.7f)
                 )
             }
         }

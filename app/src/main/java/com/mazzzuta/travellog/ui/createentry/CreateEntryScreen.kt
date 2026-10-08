@@ -25,6 +25,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -45,9 +48,16 @@ fun CreateEntryScreen(
         state.titleError?.let { snackbarHostState.showSnackbar(it) }
     }
 
+    LaunchedEffect(state.duplicatePhotosSkipped) {
+        if (state.duplicatePhotosSkipped > 0) {
+            snackbarHostState.showSnackbar("Пропущено уже добавленных фото: ${state.duplicatePhotosSkipped}")
+            viewModel.onDuplicateMessageShown()
+        }
+    }
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 5)
-    ) { uris -> uris.forEach { viewModel.onPhotoPicked(it.toString()) } }
+        contract = ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris -> viewModel.onPhotosPicked(uris.map { it.toString() }) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -82,11 +92,40 @@ fun CreateEntryScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(state.photoUris) { uri ->
-                    AsyncImage(
-                        model = uri, contentDescription = null,
-                        modifier = Modifier.size(96.dp).clip(RoundedCornerShape(16.dp))
-                    )
+                items(state.photoUris, key = { it }) { uri ->
+                    Box(modifier = Modifier.size(96.dp)) {
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp))
+                        )
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Добавлено",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(6.dp)
+                                .size(20.dp)
+                                .background(Color.White, CircleShape)
+                        )
+                        IconButton(
+                            onClick = { viewModel.onPhotoRemoved(uri) },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(2.dp)
+                                .size(28.dp)
+                                .background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Убрать фото",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
                 item {
                     OutlinedButton(
