@@ -30,6 +30,7 @@ data class CreateEntryUiState(
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val locationSearchError: String? = null,
+    val duplicatePhotosSkipped: Int = 0,
 )
 
 class CreateEntryViewModel(
@@ -59,8 +60,22 @@ class CreateEntryViewModel(
         _uiState.update { it.copy(description = text) }
     }
 
-    fun onPhotoPicked(uri: String) {
-        _uiState.update { it.copy(photoUris = it.photoUris + uri) }
+    fun onPhotosPicked(uris: List<String>) {
+        _uiState.update { state ->
+            val newOnes = uris.filter { it !in state.photoUris }
+            state.copy(
+                photoUris = state.photoUris + newOnes,
+                duplicatePhotosSkipped = uris.size - newOnes.size
+            )
+        }
+    }
+
+    fun onPhotoRemoved(uri: String) {
+        _uiState.update { it.copy(photoUris = it.photoUris - uri) }
+    }
+
+    fun onDuplicateMessageShown() {
+        _uiState.update { it.copy(duplicatePhotosSkipped = 0) }
     }
 
     fun toggleTag(tagId: Long) {

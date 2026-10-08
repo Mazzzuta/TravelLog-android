@@ -1,56 +1,38 @@
 package com.mazzzuta.travellog.ui.entrydetail
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.mazzzuta.travellog.viewmodels.EntryDetailViewModel
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
+import com.mazzzuta.travellog.utils.LocalDateFormat
+import com.mazzzuta.travellog.utils.formatDate
 
 @Composable
 fun EntryDetailScreen(
@@ -59,19 +41,20 @@ fun EntryDetailScreen(
     viewModel: EntryDetailViewModel = koinViewModel(parameters = { parametersOf(entryId) })
 ) {
     val state by viewModel.uiState.collectAsState()
+    var fullscreenPage by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(state.isDeleted) {
         if (state.isDeleted) onBack()
     }
 
-    if (state.isLoading || state.entry == null) {
+    val entryWithDetails = state.entry
+    if (state.isLoading || entryWithDetails == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         return
     }
 
-    val entryWithDetails = state.entry!!
     val entry = entryWithDetails.entry
     val photos = entryWithDetails.photos
 
@@ -81,30 +64,35 @@ fun EntryDetailScreen(
         Box(modifier = Modifier.fillMaxWidth().height(300.dp)) {
             if (photos.isNotEmpty()) {
                 val pagerState = rememberPagerState(pageCount = { photos.size })
+                val scope = rememberCoroutineScope()
+
                 HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                     AsyncImage(
                         model = photos[page].filePath,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { fullscreenPage = page }
                     )
                 }
+
                 if (photos.size > 1) {
-                    val scope = rememberCoroutineScope()
                     Row(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 6.dp)
-                            // область нажатия шире самих кружков, чтобы удобно было зажимать пальцем
                             .pointerInput(photos.size) {
                                 detectTapGestures { offset ->
-                                    val page = (offset.x / size.width * photos.size).toInt().coerceIn(0, photos.size - 1)
+                                    val page = (offset.x / size.width * photos.size).toInt()
+                                        .coerceIn(0, photos.size - 1)
                                     scope.launch { pagerState.animateScrollToPage(page) }
                                 }
                             }
                             .pointerInput(photos.size) {
                                 detectHorizontalDragGestures { change, _ ->
-                                    val page = (change.position.x / size.width * photos.size).toInt().coerceIn(0, photos.size - 1)
+                                    val page = (change.position.x / size.width * photos.size).toInt()
+                                        .coerceIn(0, photos.size - 1)
                                     scope.launch { pagerState.scrollToPage(page) }
                                 }
                             }
@@ -126,7 +114,11 @@ fun EntryDetailScreen(
                     }
                 }
             } else {
-                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                )
             }
 
             IconButton(
@@ -140,6 +132,7 @@ fun EntryDetailScreen(
             }
         }
 
+        // Содержимое записи
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
 
             if (entryWithDetails.tags.isNotEmpty()) {
@@ -151,17 +144,24 @@ fun EntryDetailScreen(
                 Spacer(Modifier.height(10.dp))
             }
 
-            Text(entry.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+            Text(
+                entry.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                formatDate(entry.date, LocalDateFormat.current),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             Spacer(Modifier.height(8.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                entry.placeName?.let {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(it, style = MaterialTheme.typography.bodySmall)
-                    }
+            entry.placeName?.let {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(it, style = MaterialTheme.typography.bodySmall)
                 }
             }
 
@@ -172,7 +172,10 @@ fun EntryDetailScreen(
             Spacer(Modifier.height(24.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = { /* реализуем редактирование позже */ }, modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = { /* реализуем редактирование позже */ },
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Изменить")
@@ -190,6 +193,16 @@ fun EntryDetailScreen(
         }
     }
 
+    // Полноэкранный просмотр фото
+    fullscreenPage?.let { startPage ->
+        FullscreenPhotoViewer(
+            photoPaths = photos.map { it.filePath },
+            startPage = startPage,
+            onDismiss = { fullscreenPage = null }
+        )
+    }
+
+    // Подтверждение удаления
     if (state.showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { viewModel.onDeleteDismiss() },
@@ -204,5 +217,49 @@ fun EntryDetailScreen(
                 TextButton(onClick = { viewModel.onDeleteDismiss() }) { Text("Отмена") }
             }
         )
+    }
+}
+
+@Composable
+private fun FullscreenPhotoViewer(
+    photoPaths: List<String>,
+    startPage: Int,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        val pagerState = rememberPagerState(initialPage = startPage, pageCount = { photoPaths.size })
+
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                AsyncImage(
+                    model = photoPaths[page],
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(12.dp)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = Color.White)
+            }
+
+            Text(
+                text = "${pagerState.currentPage + 1} / ${photoPaths.size}",
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+            )
+        }
     }
 }
