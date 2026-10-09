@@ -12,8 +12,15 @@ class PhotoStorageHelper(private val context: Context) {
     suspend fun saveToInternalStorage(sourceUri: String): String = withContext(Dispatchers.IO) {
         val photosDir = File(context.filesDir, "photos").apply { if (!exists()) mkdirs() }
         val destFile = File(photosDir, "${UUID.randomUUID()}.jpg")
-        context.contentResolver.openInputStream(Uri.parse(sourceUri))?.use { input ->
-            destFile.outputStream().use { output -> input.copyTo(output) }
+        try {
+            val input = context.contentResolver.openInputStream(Uri.parse(sourceUri))
+                ?: error("Не удалось открыть фотографию")
+            input.use {
+                destFile.outputStream().use { output -> it.copyTo(output) }
+            }
+        } catch (e: Exception) {
+            destFile.delete()
+            throw e
         }
         destFile.absolutePath
     }

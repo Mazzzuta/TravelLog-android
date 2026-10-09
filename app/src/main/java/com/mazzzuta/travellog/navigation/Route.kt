@@ -7,6 +7,7 @@ sealed interface Route {
     @Serializable data object Feed : Route
     @Serializable data object MapScreen : Route
     @Serializable data object CreateEntry : Route
+    @Serializable data class EditEntry(val entryId: Long) : Route
     @Serializable data class EntryDetail(val entryId: Long) : Route
     @Serializable data object Statistics : Route
     @Serializable data object Settings : Route
@@ -14,6 +15,6 @@ sealed interface Route {
 }
 
 fun Route.hasBottomNav(): Boolean = when (this) {
-    is Route.CreateEntry, is Route.EntryDetail, is Route.Trips -> false
+    is Route.CreateEntry, is Route.EditEntry, is Route.EntryDetail, is Route.Trips -> false
     else -> true
 }

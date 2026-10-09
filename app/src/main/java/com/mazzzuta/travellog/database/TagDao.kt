@@ -22,6 +22,9 @@ interface TagDao {
     @Delete
     suspend fun removeTagFromEntry(crossRef: EntryTagCrossRef)
 
+    @Query("DELETE FROM entry_tag_cross_ref WHERE entryId = :entryId")
+    suspend fun removeTagsForEntry(entryId: Long)
+
     // данные для круговой диаграммы на экране статистики
     @Query("""
         SELECT tags.name as tagName, COUNT(entry_tag_cross_ref.entryId) as count 
