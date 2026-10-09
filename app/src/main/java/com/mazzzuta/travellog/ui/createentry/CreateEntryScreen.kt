@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.mazzzuta.travellog.viewmodels.CreateEntryViewModel
 import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -34,11 +36,20 @@ import androidx.compose.ui.layout.ContentScale
 fun CreateEntryScreen(
     onSaved: () -> Unit,
     onCancel: () -> Unit,
-    viewModel: CreateEntryViewModel = koinViewModel()
+    entryId: Long? = null,
+    viewModel: CreateEntryViewModel = koinViewModel(parameters = { parametersOf(entryId) })
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    BackHandler(enabled = state.isSaving) { }
+
+    LaunchedEffect(state.saveError) {
+        state.saveError?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.onSaveErrorShown()
+        }
+    }
 
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) onSaved()
@@ -71,14 +82,22 @@ fun CreateEntryScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onCancel) { Icon(Icons.Default.ArrowBack, contentDescription = "Назад") }
-                Text("Новая запись", fontWeight = FontWeight.ExtraBold)
-                Button(onClick = { viewModel.save() }, enabled = !state.isSaving) {
-                    Text(if (state.isSaving) "..." else "Сохранить")
+                IconButton(onClick = onCancel, enabled = !state.isSaving) { Icon(Icons.Default.ArrowBack, contentDescription = "Назад") }
+                Text(if (entryId == null) "Новая запись" else "Изменить запись", fontWeight = FontWeight.ExtraBold)
+                Button(onClick = { viewModel.save() }, enabled = !state.isSaving && !state.isLoading && !state.isDetectingLocation && state.loadError == null) {
+                    if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    else Text("Сохранить")
                 }
             }
         }
     ) { padding ->
+        if (state.isLoading || state.isSaving || state.loadError != null) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                if (state.isLoading || state.isSaving) CircularProgressIndicator()
+                else Text(state.loadError!!, color = MaterialTheme.colorScheme.error)
+            }
+            return@Scaffold
+        }
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
         ) {

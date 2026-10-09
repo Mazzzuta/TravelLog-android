@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
+import java.io.File
 
 data class CreateEntryUiState(
     val title: String = "",
@@ -31,6 +34,9 @@ data class CreateEntryUiState(
     val isSaved: Boolean = false,
     val locationSearchError: String? = null,
     val duplicatePhotosSkipped: Int = 0,
+    val isLoading: Boolean = false,
+    val loadError: String? = null,
+    val saveError: String? = null,
 )
 
 class CreateEntryViewModel(
@@ -39,12 +45,39 @@ class CreateEntryViewModel(
     private val geocoderHelper: GeocoderHelper,
     private val locationHelper: LocationHelper,
     private val photoStorageHelper: PhotoStorageHelper,
+    private val entryId: Long? = null,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(CreateEntryUiState())
+    private val _uiState = MutableStateFlow(CreateEntryUiState(isLoading = entryId != null))
     val uiState: StateFlow<CreateEntryUiState> = _uiState.asStateFlow()
+    private var originalEntry: EntryEntity? = null
+    private var originalPhotoPaths: Set<String> = emptySet()
 
     init {
+        if (entryId != null) viewModelScope.launch {
+            try {
+                val details = repository.getEntryWithDetails(entryId).first()
+                    ?: error("Запись не найдена")
+                originalEntry = details.entry
+                originalPhotoPaths = details.photos.map { it.filePath }.toSet()
+                _uiState.update {
+                    it.copy(
+                        title = details.entry.title,
+                        description = details.entry.description,
+                        photoUris = details.photos.sortedBy { photo -> photo.orderIndex }.map { photo -> photo.filePath },
+                        selectedTagIds = details.tags.map { tag -> tag.id }.toSet(),
+                        latitude = details.entry.latitude,
+                        longitude = details.entry.longitude,
+                        placeName = details.entry.placeName,
+                        isLoading = false,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, loadError = "Не удалось загрузить запись") }
+            }
+        }
         viewModelScope.launch {
             repository.getAllTags().collect { tags ->
                 _uiState.update { it.copy(availableTags = tags) }
@@ -121,26 +154,46 @@ class CreateEntryViewModel(
 
     fun save() {
         val state = _uiState.value
+        if (state.isLoading || state.loadError != null || state.isSaving || state.isSaved || state.isDetectingLocation) return
         if (state.title.isBlank()) {
             _uiState.update { it.copy(titleError = "Название записи не может быть пустым") }
             return
         }
+        _uiState.update { it.copy(isSaving = true, saveError = null) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isSaving = true) }
-            val savedPaths = state.photoUris.map { photoStorageHelper.saveToInternalStorage(it) }
-            val tripId = tripRepository.ensureDefaultTrip()
-            val entry = EntryEntity(
-                tripId = tripId,
-                title = state.title.trim(),
-                description = state.description.trim(),
-                date = System.currentTimeMillis(),
-                latitude = state.latitude ?: 0.0,
-                longitude = state.longitude ?: 0.0,
-                placeName = state.placeName
-            )
-            repository.createEntry(entry, savedPaths, state.selectedTagIds.toList())
-            _uiState.update { it.copy(isSaving = false, isSaved = true) }
+            val copiedPaths = mutableListOf<String>()
+            try {
+                val savedPaths = state.photoUris.map { uri ->
+                    if (uri in originalPhotoPaths) uri
+                    else photoStorageHelper.saveToInternalStorage(uri).also { copiedPaths.add(it) }
+                }
+                val original = originalEntry
+                val entry = (original ?: EntryEntity(
+                    tripId = tripRepository.ensureDefaultTrip(),
+                    title = "", description = "", date = System.currentTimeMillis(),
+                    latitude = 0.0, longitude = 0.0,
+                )).copy(
+                    title = state.title.trim(), description = state.description.trim(),
+                    latitude = state.latitude ?: 0.0, longitude = state.longitude ?: 0.0,
+                    placeName = state.placeName, updatedAt = System.currentTimeMillis(),
+                )
+                if (original == null) repository.createEntry(entry, savedPaths, state.selectedTagIds.toList())
+                else repository.updateEntry(entry, savedPaths, state.selectedTagIds.toList())
+                // shortcut: убранные старые фото остаются на диске; очистку добавить с учётом обложек поездок.
+                _uiState.update { it.copy(isSaving = false, isSaved = true) }
+            } catch (e: CancellationException) {
+                // Транзакция откатывается при отмене; новые файлы больше не нужны.
+                copiedPaths.forEach { File(it).delete() }
+                throw e
+            } catch (e: Exception) {
+                copiedPaths.forEach { File(it).delete() }
+                _uiState.update { it.copy(isSaving = false, saveError = "Не удалось сохранить запись. Попробуйте ещё раз") }
+            }
         }
+    }
+
+    fun onSaveErrorShown() {
+        _uiState.update { it.copy(saveError = null) }
     }
 
     fun searchLocationByName(query: String) {
