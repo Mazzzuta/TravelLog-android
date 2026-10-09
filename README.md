@@ -15,3 +15,12 @@
 ## Статус разработки
 
 Проект в активной разработке. Актуальный прогресс можно отследить в коммитах репозитория.
+
+## Карта
+
+Карта работает через MapLibre Native и OpenFreeMap на данных OpenStreetMap.
+Регистрация, API-ключ и подключение оплаты не нужны. Для загрузки карты требуется интернет;
+сами записи сохраняются локально в Room.
+
+Источники: [OpenFreeMap](https://openfreemap.org/), [OpenMapTiles](https://openmaptiles.org/),
+[OpenStreetMap](https://www.openstreetmap.org/copyright).

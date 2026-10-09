@@ -227,11 +227,11 @@ fun CreateEntryScreen(
                 OutlinedButton(onClick = { tripMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Luggage, contentDescription = null)
                     Spacer(Modifier.width(12.dp))
-                    Text(state.availableTrips.firstOrNull { it.id == state.tripId }?.title ?: "Мои путешествия (по умолчанию)", modifier = Modifier.weight(1f))
+                    Text(state.availableTrips.firstOrNull { it.id == state.tripId }?.title ?: "Без поездки", modifier = Modifier.weight(1f))
                     Icon(Icons.Default.ArrowDropDown, contentDescription = "Выбрать поездку")
                 }
                 DropdownMenu(expanded = tripMenuExpanded, onDismissRequest = { tripMenuExpanded = false }) {
-                    if (state.tripId == null) DropdownMenuItem(text = { Text("Мои путешествия (по умолчанию)") }, onClick = { tripMenuExpanded = false })
+                    DropdownMenuItem(text = { Text("Без поездки") }, onClick = { viewModel.onTripSelected(null); tripMenuExpanded = false })
                     state.availableTrips.forEach { trip ->
                         DropdownMenuItem(text = { Text(trip.title) }, onClick = { viewModel.onTripSelected(trip.id); tripMenuExpanded = false })
                     }

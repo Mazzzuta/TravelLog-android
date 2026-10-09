@@ -15,9 +15,10 @@ class EntryRepository(
         tripId: Long? = null,
         dateFrom: Long? = null,
         dateTo: Long? = null,
-        sortBy: String = "date_desc"
+        sortBy: String = "date_desc",
+        onlyWithoutTrip: Boolean = false,
     ): Flow<List<EntryWithDetails>> =
-        entryDao.searchEntries(query, tripId, dateFrom, dateTo, sortBy)
+        entryDao.searchEntries(query, tripId, dateFrom, dateTo, sortBy, onlyWithoutTrip)
 
     fun getEntryWithDetails(entryId: Long): Flow<EntryWithDetails?> =
         entryDao.getEntryWithDetails(entryId)

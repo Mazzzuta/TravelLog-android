@@ -68,8 +68,87 @@ class EntryRepositoryTest {
         assertEquals(before.entry.id, after.entry.id)
         assertEquals(before.photos.map { it.filePath }, after.photos.map { it.filePath })
         assertEquals(before.tags, after.tags)
-        assertTrue(database.tripDao().getTripWithEntries(before.entry.tripId).first().entries.isEmpty())
+        assertTrue(database.tripDao().getTripWithEntries(before.entry.tripId!!).first().entries.isEmpty())
         assertEquals(entryId, database.tripDao().getTripWithEntries(tripId).first().entries.single().id)
+    }
+
+    @Test
+    fun deletingTripCascadesOnlyItsEntriesPhotosAndTagLinks() = runBlocking {
+        val before = repository.getEntryWithDetails(entryId).first()!!
+        val trips = TripRepository(database.tripDao())
+        val otherTripId = trips.createTrip(TripEntity(title = "Оставить", startDate = 1000L))
+        val otherEntryId = repository.createEntry(before.entry.copy(id = 0L, tripId = otherTripId), listOf("keep.jpg"), listOf(tagId))
+        val trip = trips.getAllTrips().first().first { it.id == before.entry.tripId }
+
+        trips.deleteTrip(trip, deleteEntries = true)
+
+        assertNull(repository.getEntryWithDetails(entryId).first())
+        assertTrue(database.photoDao().getPhotosForEntry(entryId).isEmpty())
+        database.openHelper.readableDatabase.query(
+            "SELECT COUNT(*) FROM entry_tag_cross_ref WHERE entryId = $entryId"
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        assertEquals(listOf(otherTripId), trips.getAllTrips().first().map { it.id })
+        val remaining = repository.getEntryWithDetails(otherEntryId).first()!!
+        assertEquals(listOf("keep.jpg"), remaining.photos.map { it.filePath })
+        assertEquals(listOf(tagId), remaining.tags.map { it.id })
+        assertEquals(listOf(tagId), repository.getAllTags().first().map { it.id })
+    }
+
+    @Test
+    fun standaloneEntrySurvivesDeletingItsFormerTrip() = runBlocking {
+        val before = repository.getEntryWithDetails(entryId).first()!!
+        repository.updateEntry(before.entry.copy(tripId = null), before.photos.map { it.filePath }, before.tags.map { it.id })
+        database.tripDao().delete(database.tripDao().getAllTrips().first().single())
+        val after = repository.getEntryWithDetails(entryId).first()!!
+        assertNull(after.entry.tripId)
+        assertEquals(before.photos.map { it.filePath }, after.photos.map { it.filePath })
+        assertEquals(before.tags, after.tags)
+        val standaloneId = repository.createEntry(before.entry.copy(id = 0L, tripId = null), emptyList(), emptyList())
+        assertNull(repository.getEntryWithDetails(standaloneId).first()!!.entry.tripId)
+        assertTrue(database.tripDao().getAllTrips().first().isEmpty())
+    }
+
+    @Test
+    fun deletingOnlyTripKeepsEntriesWithPhotosAndTags() = runBlocking {
+        val before = repository.getEntryWithDetails(entryId).first()!!
+        val trips = TripRepository(database.tripDao())
+        val trip = trips.getAllTrips().first().single()
+        val otherTripId = trips.createTrip(TripEntity(title = "Другая поездка", startDate = 1000L))
+        val otherEntryId = repository.createEntry(before.entry.copy(id = 0L, tripId = otherTripId), emptyList(), emptyList())
+
+        trips.deleteTrip(trip)
+
+        val after = repository.getEntryWithDetails(entryId).first()!!
+        assertNull(after.entry.tripId)
+        assertEquals(before.entry.id, after.entry.id)
+        assertEquals(before.entry.title, after.entry.title)
+        assertEquals(before.entry.date, after.entry.date)
+        assertEquals(before.photos, after.photos)
+        assertEquals(before.tags, after.tags)
+        assertEquals(otherTripId, repository.getEntryWithDetails(otherEntryId).first()!!.entry.tripId)
+        assertEquals(listOf(otherTripId), trips.getAllTrips().first().map { it.id })
+    }
+
+    @Test
+    fun searchTripAndDatesWorkTogetherWithInclusiveBoundaries() = runBlocking {
+        val original = repository.getEntryWithDetails(entryId).first()!!.entry
+        val startId = repository.createEntry(original.copy(id = 0L, title = "До A", date = 1000L), emptyList(), emptyList())
+        val endId = repository.createEntry(original.copy(id = 0L, title = "До B", date = 3000L), emptyList(), emptyList())
+        repository.createEntry(original.copy(id = 0L, date = 3001L), emptyList(), emptyList())
+        repository.createEntry(original.copy(id = 0L, title = "Другое", description = "Другое"), emptyList(), emptyList())
+        val otherTrip = database.tripDao().insert(TripEntity(title = "Другая", startDate = 1000L))
+        repository.createEntry(original.copy(id = 0L, tripId = otherTrip), emptyList(), emptyList())
+        val standalone = repository.createEntry(original.copy(id = 0L, tripId = null), emptyList(), emptyList())
+        val filtered = repository.searchEntries(query = "До", tripId = original.tripId,
+            dateFrom = 1000L, dateTo = 3000L, sortBy = "date_asc").first()
+        assertEquals(listOf(startId, entryId, endId), filtered.map { it.entry.id })
+        assertEquals(listOf(standalone), repository.searchEntries(query = "До", dateFrom = 1000L,
+            dateTo = 3000L, onlyWithoutTrip = true).first().map { it.entry.id })
+        assertEquals(listOf(endId, entryId, startId), repository.searchEntries(query = "До", tripId = original.tripId,
+            dateFrom = 1000L, dateTo = 3000L).first().map { it.entry.id })
     }
 
     @Test

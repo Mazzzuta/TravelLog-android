@@ -19,13 +19,16 @@ import androidx.room.PrimaryKey
 )
 data class EntryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val tripId: Long,
+    val tripId: Long? = null,
     val title: String,
     val description: String,
     val date: Long,
-    val latitude: Double,
-    val longitude: Double,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val placeName: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
+
+fun EntryEntity.hasCoordinates(): Boolean =
+    latitude != null && longitude != null && latitude in -90.0..90.0 && longitude in -180.0..180.0

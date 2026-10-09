@@ -1,6 +1,8 @@
 package com.mazzzuta.travellog.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.mazzzuta.travellog.database.ThemeMode
+import com.mazzzuta.travellog.database.UserPrefs
 
 /** Цветовая схема приложения: 10 ролей цвета (см. лист «Роли» в palettes.xlsx). */
 data class AppPalette(
@@ -47,10 +49,15 @@ object Palettes {
     )
 
     val all = listOf(LightBase, Force, DarkBase, Berries, Jellyfish)
-    val light = all.filter { !it.isDark }
-    val dark = all.filter { it.isDark }
+    val additional = all.filter { it != LightBase && it != DarkBase }
 
-    /** Находит схему по id среди схем нужной яркости, иначе возвращает базовую. */
-    fun resolve(isDark: Boolean, id: String): AppPalette =
-        all.firstOrNull { it.id == id && it.isDark == isDark } ?: if (isDark) DarkBase else LightBase
+    fun resolve(prefs: UserPrefs, systemDark: Boolean): AppPalette {
+        val isDark = when (prefs.themeMode) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.SYSTEM -> systemDark
+        }
+        val id = prefs.schemeId ?: if (isDark) prefs.darkSchemeId else prefs.lightSchemeId
+        return all.firstOrNull { it.id == id } ?: if (isDark) DarkBase else LightBase
+    }
 }

@@ -41,14 +41,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
 
     val p = prefs ?: return
 
-    // яркость, которая действует прямо сейчас: от неё зависит, какие плитки схем показывать
-    val isDark = when (p.themeMode) {
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-        ThemeMode.SYSTEM -> systemDark
-    }
-    val schemes = if (isDark) Palettes.dark else Palettes.light
-    val selectedSchemeId = if (isDark) p.darkSchemeId else p.lightSchemeId
+    val activePalette = Palettes.resolve(p, systemDark)
+    val customSelected = activePalette in Palettes.additional
 
     Column(
         modifier = Modifier
@@ -107,35 +101,35 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
             ThemeModeCard(
                 "Светлая",
                 Brush.horizontalGradient(listOf(light.bg, light.primaryDim, light.primary)),
-                p.themeMode == ThemeMode.LIGHT, Modifier.weight(1f)
+                !customSelected && p.themeMode == ThemeMode.LIGHT, Modifier.weight(1f)
             ) { viewModel.setThemeMode(ThemeMode.LIGHT) }
             ThemeModeCard(
                 "Тёмная",
                 Brush.horizontalGradient(listOf(dark.bg, dark.primaryDim, dark.primary)),
-                p.themeMode == ThemeMode.DARK, Modifier.weight(1f)
+                !customSelected && p.themeMode == ThemeMode.DARK, Modifier.weight(1f)
             ) { viewModel.setThemeMode(ThemeMode.DARK) }
             ThemeModeCard(
                 "Системная",
                 // левая половина светлая, правая тёмная
                 Brush.horizontalGradient(0f to light.bg, 0.5f to light.primary, 0.5f to dark.bg, 1f to dark.primary),
-                p.themeMode == ThemeMode.SYSTEM, Modifier.weight(1f)
+                !customSelected && p.themeMode == ThemeMode.SYSTEM, Modifier.weight(1f)
             ) { viewModel.setThemeMode(ThemeMode.SYSTEM) }
         }
 
         Spacer(Modifier.height(24.dp))
 
-        // Цветовые схемы (для текущего режима)
+        // Дополнительные палитры доступны при любом стандартном режиме.
         SectionLabel("ЦВЕТОВАЯ СХЕМА")
         Text(
-            if (isDark) "Схемы для тёмного режима" else "Схемы для светлого режима",
+            "Выберите готовое оформление или используйте стандартную тему выше",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(10.dp))
-        schemes.chunked(2).forEach { rowItems ->
+        Palettes.additional.chunked(2).forEach { rowItems ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp)) {
                 rowItems.forEach { palette ->
-                    PaletteTile(palette, palette.id == selectedSchemeId, Modifier.weight(1f)) { viewModel.setScheme(palette) }
+                    PaletteTile(palette, palette == activePalette, Modifier.weight(1f)) { viewModel.setScheme(palette) }
                 }
                 if (rowItems.size == 1) Spacer(Modifier.weight(1f))
             }
@@ -279,26 +273,21 @@ private fun ThemeModeCard(label: String, brush: Brush, selected: Boolean, modifi
     }
 }
 
-/** Плитка цветовой схемы: все 10 цветов (2 ряда по 5) и название. */
+/** Три основных цвета помогают увидеть оформление до выбора. */
 @Composable
 private fun PaletteTile(palette: AppPalette, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     Column(
         modifier = modifier
             .clip(shape)
-            .background(palette.bg)
+            .background(MaterialTheme.colorScheme.surface)
             .border(if (selected) 2.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, shape)
             .clickable(onClick = onClick)
-            .padding(10.dp)
+            .padding(12.dp)
     ) {
-        Column(modifier = Modifier.clip(RoundedCornerShape(10.dp))) {
-            listOf(
-                listOf(palette.bg, palette.surface, palette.stroke, palette.ink, palette.inkMuted),
-                listOf(palette.primary, palette.primaryDim, palette.onPrimary, palette.success, palette.danger)
-            ).forEach { colors ->
-                Row {
-                    colors.forEach { color -> Box(modifier = Modifier.weight(1f).height(22.dp).background(color)) }
-                }
+        Row(modifier = Modifier.clip(RoundedCornerShape(12.dp))) {
+            listOf(palette.bg, palette.surface, palette.primary).forEach { color ->
+                Box(modifier = Modifier.weight(1f).height(56.dp).background(color))
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -308,7 +297,7 @@ private fun PaletteTile(palette: AppPalette, selected: Boolean, modifier: Modifi
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = palette.ink,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )

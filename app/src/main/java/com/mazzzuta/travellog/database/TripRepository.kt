@@ -1,7 +1,6 @@
 package com.mazzzuta.travellog.database
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 
 class TripRepository(private val tripDao: TripDao) {
     fun getAllTrips(): Flow<List<TripEntity>> = tripDao.getAllTrips()
@@ -14,13 +13,11 @@ class TripRepository(private val tripDao: TripDao) {
         validateTrip(trip)
         tripDao.update(trip.copy(title = trip.title.trim()))
     }
-    suspend fun deleteTrip(trip: TripEntity) = tripDao.delete(trip)
-
-    suspend fun ensureDefaultTrip(): Long {
-        val trips = tripDao.getAllTrips().first()
-        return trips.firstOrNull()?.id
-            ?: tripDao.insert(TripEntity(title = "Мои путешествия", startDate = System.currentTimeMillis()))
+    // shortcut: каскад удаляет строки, файлы фото остаются; очистку добавить с учётом обложек других поездок.
+    suspend fun deleteTrip(trip: TripEntity, deleteEntries: Boolean = false) {
+        if (deleteEntries) tripDao.delete(trip) else tripDao.deleteKeepingEntries(trip)
     }
+
 }
 
 internal fun validateTrip(trip: TripEntity) {

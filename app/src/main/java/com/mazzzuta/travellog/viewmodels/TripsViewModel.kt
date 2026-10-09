@@ -21,6 +21,8 @@ data class TripsUiState(
     val isSaving: Boolean = false,
     val error: String? = null,
     val saved: Boolean = false,
+    val tripToDelete: TripEntity? = null,
+    val isDeleting: Boolean = false,
 )
 
 class TripsViewModel(
@@ -52,7 +54,7 @@ class TripsViewModel(
     }
 
     fun save(trip: TripEntity) {
-        if (_uiState.value.isSaving) return
+        if (_uiState.value.isSaving || _uiState.value.isDeleting) return
         _uiState.update { it.copy(isSaving = true, error = null, saved = false) }
         viewModelScope.launch {
             try {
@@ -64,6 +66,33 @@ class TripsViewModel(
                 _uiState.update { it.copy(isSaving = false, error = e.message) }
             } catch (_: Exception) {
                 _uiState.update { it.copy(isSaving = false, error = "Не удалось сохранить поездку. Попробуйте ещё раз") }
+            }
+        }
+    }
+
+    fun requestDelete(trip: TripEntity) {
+        if (!_uiState.value.isSaving && !_uiState.value.isDeleting) {
+            _uiState.update { it.copy(tripToDelete = trip, error = null) }
+        }
+    }
+
+    fun dismissDelete() {
+        if (!_uiState.value.isDeleting) _uiState.update { it.copy(tripToDelete = null, error = null) }
+    }
+
+    fun confirmDelete(deleteEntries: Boolean) {
+        val state = _uiState.value
+        val trip = state.tripToDelete ?: return
+        if (state.isDeleting || state.isSaving) return
+        _uiState.update { it.copy(isDeleting = true, error = null) }
+        viewModelScope.launch {
+            try {
+                repository.deleteTrip(trip, deleteEntries)
+                _uiState.update { it.copy(isDeleting = false, tripToDelete = null) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isDeleting = false, error = "Не удалось удалить поездку. Попробуйте ещё раз") }
             }
         }
     }

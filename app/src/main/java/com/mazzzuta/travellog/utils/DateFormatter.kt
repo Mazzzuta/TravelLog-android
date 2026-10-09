@@ -29,6 +29,10 @@ fun fromDatePickerMillis(timestampMillis: Long): Long = Instant.ofEpochMilli(tim
     .atZone(ZoneOffset.UTC).toLocalDate()
     .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
+fun endOfDayMillis(timestampMillis: Long): Long = Instant.ofEpochMilli(timestampMillis)
+    .atZone(ZoneId.systemDefault()).toLocalDate().plusDays(1)
+    .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() - 1
+
 /** Форматирует метку времени (мс) по выбранному формату. */
 fun formatDate(timestampMillis: Long, format: DateFormatOption): String =
     Instant.ofEpochMilli(timestampMillis)

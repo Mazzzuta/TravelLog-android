@@ -2,6 +2,9 @@ package com.mazzzuta.travellog.di
 
 import androidx.room.Room
 import com.mazzzuta.travellog.database.AppDatabase
+import com.mazzzuta.travellog.database.MIGRATION_1_2
+import com.mazzzuta.travellog.database.MIGRATION_2_3
+import com.mazzzuta.travellog.viewmodels.MapViewModel
 import com.mazzzuta.travellog.database.EntryRepository
 import com.mazzzuta.travellog.database.TripRepository
 import org.koin.android.ext.koin.androidContext
@@ -25,7 +28,7 @@ val appModule = module {
             androidContext(),
             AppDatabase::class.java,
             "travellog.db"
-        ).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
     }
 
     single { get<AppDatabase>().tripDao() }
@@ -36,7 +39,7 @@ val appModule = module {
     single { EntryRepository(get(), get(), get(), get()) }
     single { TripRepository(get()) }
 
-    viewModel { FeedViewModel(get(), get()) }
+    viewModel { FeedViewModel(get(), get(), get()) }
     viewModel { (entryId: Long) -> EntryDetailViewModel(entryId, get()) }
 
     single { GeocoderHelper(androidContext()) }
@@ -46,6 +49,7 @@ val appModule = module {
     single { UserPreferencesRepository(androidContext()) }
     viewModel { SettingsViewModel(get()) }
     viewModel { TripsViewModel(get(), get()) }
+    viewModel { MapViewModel(get(), get()) }
 
     viewModel { parameters -> CreateEntryViewModel(get(), get(), get(), get(), get(), parameters.getOrNull<Long>()) }
 }
