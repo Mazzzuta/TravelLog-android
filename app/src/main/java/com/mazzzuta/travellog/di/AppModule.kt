@@ -16,6 +16,7 @@ import com.mazzzuta.travellog.viewmodels.CreateEntryViewModel
 import com.mazzzuta.travellog.viewmodels.EntryDetailViewModel
 import com.mazzzuta.travellog.database.UserPreferencesRepository
 import com.mazzzuta.travellog.viewmodels.SettingsViewModel
+import com.mazzzuta.travellog.viewmodels.TripsViewModel
 
 val appModule = module {
 
@@ -44,6 +45,7 @@ val appModule = module {
 
     single { UserPreferencesRepository(androidContext()) }
     viewModel { SettingsViewModel(get()) }
+    viewModel { TripsViewModel(get(), get()) }
 
     viewModel { parameters -> CreateEntryViewModel(get(), get(), get(), get(), get(), parameters.getOrNull<Long>()) }
 }

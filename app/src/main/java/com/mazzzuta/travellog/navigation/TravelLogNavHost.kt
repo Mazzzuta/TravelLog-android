@@ -90,7 +90,7 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
             composable<Route.Trips> {
                 TripsScreen(
                     onBack = { navController.popBackStack() },
-                    onTripClick = { }
+                    onEntryClick = { id -> navController.navigate(Route.EntryDetail(id)) }
                 )
             }
         }

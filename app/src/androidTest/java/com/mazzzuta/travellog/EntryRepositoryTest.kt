@@ -59,6 +59,20 @@ class EntryRepositoryTest {
     }
 
     @Test
+    fun entryCanMoveToAnotherTripWithoutLosingPhotosOrTags() = runBlocking {
+        val before = repository.getEntryWithDetails(entryId).first()!!
+        val tripId = database.tripDao().insert(TripEntity(title = "Другая поездка", startDate = 1000L))
+        repository.updateEntry(before.entry.copy(tripId = tripId), before.photos.map { it.filePath }, before.tags.map { it.id })
+        val after = repository.getEntryWithDetails(entryId).first()!!
+        assertEquals(tripId, after.entry.tripId)
+        assertEquals(before.entry.id, after.entry.id)
+        assertEquals(before.photos.map { it.filePath }, after.photos.map { it.filePath })
+        assertEquals(before.tags, after.tags)
+        assertTrue(database.tripDao().getTripWithEntries(before.entry.tripId).first().entries.isEmpty())
+        assertEquals(entryId, database.tripDao().getTripWithEntries(tripId).first().entries.single().id)
+    }
+
+    @Test
     fun invalidTagRollsBackEntireEdit() = runBlocking {
         val before = repository.getEntryWithDetails(entryId).first()!!
         try {
