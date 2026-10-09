@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -32,21 +33,22 @@ fun TripsScreen(onBack: () -> Unit, onEntryClick: (Long) -> Unit, viewModel: Tri
     var expandedId by rememberSaveable { mutableStateOf<Long?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val dateFormat = LocalDateFormat.current
+    BackHandler(enabled = state.isDeleting) { }
     LaunchedEffect(state.saved) {
         if (state.saved) { editing = null; viewModel.clearMessage() }
     }
     LaunchedEffect(state.error) {
-        if (editing == null) state.error?.let { snackbar.showSnackbar(it) }
+        if (editing == null && state.tripToDelete == null) state.error?.let { snackbar.showSnackbar(it) }
     }
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад") }
+                IconButton(onClick = onBack, enabled = !state.isDeleting) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад") }
                 Text("Мои поездки", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
                 TextButton(onClick = {
                     viewModel.clearMessage()
                     editing = TripEntity(title = "", startDate = fromDatePickerMillis(toDatePickerMillis(System.currentTimeMillis())))
-                }, enabled = !state.isLoading) { Text("Создать") }
+                }, enabled = !state.isLoading && !state.isDeleting) { Text("Создать") }
             }
             when {
                 state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -71,8 +73,11 @@ fun TripsScreen(onBack: () -> Unit, onEntryClick: (Long) -> Unit, viewModel: Tri
                                         style = MaterialTheme.typography.bodySmall)
                                     Text("Записей: ${entries.size}", style = MaterialTheme.typography.bodySmall)
                                 }
-                                IconButton(onClick = { viewModel.clearMessage(); editing = trip }) {
+                                IconButton(onClick = { viewModel.clearMessage(); editing = trip }, enabled = !state.isDeleting) {
                                     Icon(Icons.Default.Edit, contentDescription = "Изменить поездку")
+                                }
+                                IconButton(onClick = { viewModel.requestDelete(trip) }, enabled = !state.isDeleting) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Удалить поездку", tint = MaterialTheme.colorScheme.error)
                                 }
                             }
                             OutlinedButton(
@@ -120,6 +125,33 @@ fun TripsScreen(onBack: () -> Unit, onEntryClick: (Long) -> Unit, viewModel: Tri
     }
     editing?.let { trip ->
         TripEditor(trip, state.isSaving, state.error, { editing = null; viewModel.clearMessage() }, viewModel::save)
+    }
+    state.tripToDelete?.let { trip ->
+        val count = state.entries.count { it.entry.tripId == trip.id }
+        var deleteEntries by rememberSaveable(trip.id) { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDelete,
+            title = { Text("Удалить поездку?") },
+            text = {
+                Column {
+                    Text(if (deleteEntries)
+                        "Поездка «${trip.title}» и все её записи будут удалены. Это действие нельзя отменить."
+                    else "Поездка «${trip.title}» будет удалена. Все её записи, фото и теги останутся в дневнике. Записи станут «Без поездки».")
+                    if (count > 0) Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = deleteEntries, onCheckedChange = { deleteEntries = it }, enabled = !state.isDeleting)
+                        Text("Удалить также записи ($count)")
+                    }
+                    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmDelete(deleteEntries) }, enabled = !state.isDeleting) {
+                    if (state.isDeleting) CircularProgressIndicator(Modifier.size(20.dp))
+                    else Text(if (deleteEntries) "Удалить поездку и записи" else "Удалить только поездку", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = viewModel::dismissDelete, enabled = !state.isDeleting) { Text("Отмена") } },
+        )
     }
 }
 

@@ -27,6 +27,7 @@ interface EntryDao {
         SELECT * FROM entries 
         WHERE (:query = '' OR title LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%')
         AND (:tripId IS NULL OR tripId = :tripId)
+        AND (:onlyWithoutTrip = 0 OR tripId IS NULL)
         AND (:dateFrom IS NULL OR date >= :dateFrom)
         AND (:dateTo IS NULL OR date <= :dateTo)
         ORDER BY 
@@ -39,7 +40,8 @@ interface EntryDao {
         tripId: Long? = null,
         dateFrom: Long? = null,
         dateTo: Long? = null,
-        sortBy: String = "date_desc"
+        sortBy: String = "date_desc",
+        onlyWithoutTrip: Boolean = false,
     ): Flow<List<EntryWithDetails>>
 
     @Transaction

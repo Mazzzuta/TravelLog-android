@@ -27,11 +27,8 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         viewModelScope.launch { repository.setThemeMode(mode) }
     }
 
-    /** Схема запоминается отдельно для светлого и тёмного режима. */
     fun setScheme(palette: AppPalette) {
-        viewModelScope.launch {
-            if (palette.isDark) repository.setDarkScheme(palette.id) else repository.setLightScheme(palette.id)
-        }
+        viewModelScope.launch { repository.setScheme(palette.id) }
     }
 
     fun setDefaultSort(sort: SortOption) {

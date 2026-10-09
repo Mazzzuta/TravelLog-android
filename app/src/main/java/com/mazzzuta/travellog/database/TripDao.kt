@@ -22,6 +22,15 @@ interface TripDao {
     @Delete
     suspend fun delete(trip: TripEntity)
 
+    @Query("UPDATE entries SET tripId = NULL, updatedAt = :updatedAt WHERE tripId = :tripId")
+    suspend fun detachEntries(tripId: Long, updatedAt: Long)
+
+    @Transaction
+    suspend fun deleteKeepingEntries(trip: TripEntity) {
+        detachEntries(trip.id, System.currentTimeMillis())
+        delete(trip)
+    }
+
     // Flow — экран сам обновится, когда список поездок изменится в БД
     @Query("SELECT * FROM trips ORDER BY startDate DESC")
     fun getAllTrips(): Flow<List<TripEntity>>

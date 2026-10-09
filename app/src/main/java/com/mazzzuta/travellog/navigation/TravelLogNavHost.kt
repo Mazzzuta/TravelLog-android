@@ -57,7 +57,8 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
             composable<Route.Feed> {
                 FeedScreen(
                     onEntryClick = { id -> navController.navigate(Route.EntryDetail(id)) },
-                    onTripsClick = { navController.navigate(Route.Trips) }
+                    onTripsClick = { navController.navigate(Route.Trips) },
+                    onCreateClick = { navController.navigate(Route.CreateEntry) }
                 )
             }
             composable<Route.MapScreen> {

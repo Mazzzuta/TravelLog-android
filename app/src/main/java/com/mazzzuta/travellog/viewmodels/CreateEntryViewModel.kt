@@ -92,7 +92,7 @@ class CreateEntryViewModel(
         viewModelScope.launch {
             tripRepository.getAllTrips().collect { trips ->
                 _uiState.update {
-                    it.copy(availableTrips = trips, tripId = it.tripId ?: if (entryId == null) trips.firstOrNull()?.id else null)
+                    it.copy(availableTrips = trips)
                 }
             }
         }
@@ -189,16 +189,15 @@ class CreateEntryViewModel(
                     else photoStorageHelper.saveToInternalStorage(uri).also { copiedPaths.add(it) }
                 }
                 val original = originalEntry
-                val tripId = state.tripId ?: original?.tripId ?: tripRepository.ensureDefaultTrip()
+                val tripId = state.tripId
                 val entry = (original ?: EntryEntity(
                     tripId = tripId,
                     title = "", description = "", date = state.date,
-                    latitude = 0.0, longitude = 0.0,
                 )).copy(
                     title = state.title.trim(), description = state.description.trim(),
                     date = state.date,
                     tripId = tripId,
-                    latitude = state.latitude ?: 0.0, longitude = state.longitude ?: 0.0,
+                    latitude = state.latitude, longitude = state.longitude,
                     placeName = state.placeName, updatedAt = System.currentTimeMillis(),
                 )
                 if (original == null) repository.createEntry(entry, savedPaths, state.selectedTagIds.toList())
