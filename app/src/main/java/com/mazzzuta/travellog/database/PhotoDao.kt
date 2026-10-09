@@ -15,6 +15,9 @@ interface PhotoDao {
     @Delete
     suspend fun delete(photo: PhotoEntity)
 
+    @Query("DELETE FROM photos WHERE entryId = :entryId")
+    suspend fun deleteForEntry(entryId: Long)
+
     @Query("SELECT * FROM photos WHERE entryId = :entryId ORDER BY orderIndex")
     suspend fun getPhotosForEntry(entryId: Long): List<PhotoEntity>
 }

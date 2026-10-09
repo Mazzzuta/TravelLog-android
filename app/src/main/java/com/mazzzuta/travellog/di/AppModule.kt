@@ -32,7 +32,7 @@ val appModule = module {
     single { get<AppDatabase>().photoDao() }
     single { get<AppDatabase>().tagDao() }
 
-    single { EntryRepository(get(), get(), get()) }
+    single { EntryRepository(get(), get(), get(), get()) }
     single { TripRepository(get()) }
 
     viewModel { FeedViewModel(get(), get()) }
@@ -45,5 +45,5 @@ val appModule = module {
     single { UserPreferencesRepository(androidContext()) }
     viewModel { SettingsViewModel(get()) }
 
-    viewModel { CreateEntryViewModel(get(), get(), get(), get(), get()) }
+    viewModel { parameters -> CreateEntryViewModel(get(), get(), get(), get(), get(), parameters.getOrNull<Long>()) }
 }

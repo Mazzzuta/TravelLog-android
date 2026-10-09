@@ -71,7 +71,19 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
             }
             composable<Route.EntryDetail> { backStackEntry ->
                 val args = backStackEntry.toRoute<Route.EntryDetail>()
-                EntryDetailScreen(entryId = args.entryId, onBack = { navController.popBackStack() })
+                EntryDetailScreen(
+                    entryId = args.entryId,
+                    onBack = { navController.popBackStack() },
+                    onEdit = { navController.navigate(Route.EditEntry(args.entryId)) }
+                )
+            }
+            composable<Route.EditEntry> { backStackEntry ->
+                val args = backStackEntry.toRoute<Route.EditEntry>()
+                CreateEntryScreen(
+                    entryId = args.entryId,
+                    onSaved = { navController.popBackStack() },
+                    onCancel = { navController.popBackStack() }
+                )
             }
             composable<Route.Statistics> { StatisticsScreen() }
             composable<Route.Settings> { SettingsScreen() }

@@ -38,6 +38,7 @@ import com.mazzzuta.travellog.utils.formatDate
 fun EntryDetailScreen(
     entryId: Long,
     onBack: () -> Unit,
+    onEdit: () -> Unit,
     viewModel: EntryDetailViewModel = koinViewModel(parameters = { parametersOf(entryId) })
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -173,7 +174,7 @@ fun EntryDetailScreen(
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
-                    onClick = { /* реализуем редактирование позже */ },
+                    onClick = onEdit,
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
