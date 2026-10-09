@@ -8,7 +8,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import com.mazzzuta.travellog.database.ThemeMode
 import com.mazzzuta.travellog.database.UserPreferencesRepository
 import com.mazzzuta.travellog.navigation.TravelLogNavHost
 import com.mazzzuta.travellog.ui.theme.Palettes
@@ -30,12 +29,7 @@ class MainActivity : ComponentActivity() {
             val current = prefs ?: return@setContent
 
             val systemDark = isSystemInDarkTheme()
-            val useDark = when (current.themeMode) {
-                ThemeMode.LIGHT -> false
-                ThemeMode.DARK -> true
-                ThemeMode.SYSTEM -> systemDark
-            }
-            val palette = Palettes.resolve(useDark, if (useDark) current.darkSchemeId else current.lightSchemeId)
+            val palette = Palettes.resolve(current, systemDark)
 
             CompositionLocalProvider(LocalDateFormat provides DateFormatOption.fromId(current.dateFormat)) {
                 TravelLogTheme(palette = palette) {

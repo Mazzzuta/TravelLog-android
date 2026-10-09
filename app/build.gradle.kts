@@ -66,8 +66,7 @@ dependencies {
 
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
 
-    implementation("com.google.maps.android:maps-compose:6.4.1")
-    implementation("com.google.android.gms:play-services-maps:19.0.0")
+    implementation("org.maplibre.gl:android-sdk:11.8.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
     implementation("io.insert-koin:koin-androidx-compose:4.0.2")

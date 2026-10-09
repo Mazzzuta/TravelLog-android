@@ -20,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,14 +33,22 @@ import com.mazzzuta.travellog.viewmodels.SortOption
 import org.koin.androidx.compose.koinViewModel
 import com.mazzzuta.travellog.utils.LocalDateFormat
 import com.mazzzuta.travellog.utils.formatDate
+import com.mazzzuta.travellog.utils.toDatePickerMillis
+import com.mazzzuta.travellog.utils.fromDatePickerMillis
 
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
     onEntryClick: (Long) -> Unit,
     onTripsClick: () -> Unit,
+    onCreateClick: () -> Unit,
     viewModel: FeedViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showDateRange by rememberSaveable { mutableStateOf(false) }
+    val dateFrom = state.dateFrom
+    val dateTo = state.dateTo
+    val hasFilters = state.tripId != null || state.onlyWithoutTrip || state.dateFrom != null || state.query.isNotBlank()
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -69,7 +78,7 @@ fun FeedScreen(
 
             Spacer(Modifier.height(10.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AssistChip(onClick = onTripsClick, label = { Text("Поездки") })
 
                 var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -91,14 +100,46 @@ fun FeedScreen(
                     }
                 }
             }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                var tripMenuExpanded by remember { mutableStateOf(false) }
+                Box {
+                    FilterChip(
+                        selected = state.tripId != null || state.onlyWithoutTrip,
+                        onClick = { tripMenuExpanded = true },
+                        label = { Text(if (state.onlyWithoutTrip) "Без поездки" else state.trips.firstOrNull { it.id == state.tripId }?.title ?: "Все записи") },
+                    )
+                    DropdownMenu(expanded = tripMenuExpanded, onDismissRequest = { tripMenuExpanded = false }) {
+                        DropdownMenuItem(text = { Text("Все записи") }, onClick = {
+                            viewModel.onTripFilterChanged(null); tripMenuExpanded = false
+                        })
+                        DropdownMenuItem(text = { Text("Без поездки") }, onClick = {
+                            viewModel.onTripFilterChanged(null, onlyWithoutTrip = true); tripMenuExpanded = false
+                        })
+                        state.trips.forEach { trip ->
+                            DropdownMenuItem(text = { Text(trip.title) }, onClick = {
+                                viewModel.onTripFilterChanged(trip.id); tripMenuExpanded = false
+                            })
+                        }
+                    }
+                }
+                FilterChip(
+                    selected = state.dateFrom != null,
+                    onClick = { showDateRange = true },
+                    label = { Text(if (dateFrom != null && dateTo != null)
+                        "${formatDate(dateFrom, LocalDateFormat.current)} — ${formatDate(dateTo, LocalDateFormat.current)}" else "Период") },
+                )
+                if (hasFilters) AssistChip(onClick = viewModel::clearFilters, label = { Text("Сбросить") })
+            }
         }
 
         if (state.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
+        } else if (state.error != null) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(state.error!!) }
         } else if (state.entries.isEmpty()) {
-            EmptyFeedState()
+            EmptyFeedState(hasFilters, if (hasFilters) viewModel::clearFilters else onCreateClick)
         } else {
             LazyColumn(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
@@ -109,6 +150,22 @@ fun FeedScreen(
                 }
             }
         }
+    }
+    if (showDateRange) {
+        val picker = rememberDateRangePickerState(
+            initialSelectedStartDateMillis = state.dateFrom?.let { toDatePickerMillis(it) },
+            initialSelectedEndDateMillis = state.dateTo?.let { toDatePickerMillis(it) },
+        )
+        DatePickerDialog(onDismissRequest = { showDateRange = false }, confirmButton = {
+            TextButton(enabled = picker.selectedStartDateMillis != null && picker.selectedEndDateMillis != null, onClick = {
+                val start = picker.selectedStartDateMillis
+                val end = picker.selectedEndDateMillis
+                if (start != null && end != null) viewModel.onDateRangeChanged(fromDatePickerMillis(start), fromDatePickerMillis(end))
+                showDateRange = false
+            }) { Text("Применить") }
+        }, dismissButton = {
+            TextButton(onClick = { showDateRange = false }) { Text("Отмена") }
+        }) { DateRangePicker(state = picker, modifier = Modifier.heightIn(max = 500.dp)) }
     }
 }
 
@@ -177,7 +234,7 @@ private fun EntryCard(entryWithDetails: EntryWithDetails, onClick: () -> Unit) {
 }
 
 @Composable
-private fun EmptyFeedState() {
+private fun EmptyFeedState(hasFilters: Boolean, onAction: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -185,7 +242,8 @@ private fun EmptyFeedState() {
     ) {
         Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(28.dp))
         Spacer(Modifier.height(12.dp))
-        Text("Ничего не найдено", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-        Text("Попробуй изменить запрос", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+        Text(if (hasFilters) "Ничего не найдено" else "Пока нет записей", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Text(if (hasFilters) "Измените запрос или фильтры" else "Добавьте первое воспоминание о путешествии", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+        TextButton(onClick = onAction) { Text(if (hasFilters) "Сбросить фильтры" else "Добавить запись") }
     }
 }

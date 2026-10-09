@@ -18,6 +18,8 @@ data class UserPrefs(
     val nickname: String = "Путешественник",
     val registeredAt: Long = 0L,
     val themeMode: ThemeMode = ThemeMode.LIGHT,
+    val schemeId: String? = null,
+    // Старые ключи читаются для сохранения ранее выбранного оформления.
     val lightSchemeId: String = "light_base",
     val darkSchemeId: String = "dark_base",
     val defaultSort: String = "date_desc",
@@ -31,6 +33,7 @@ class UserPreferencesRepository(private val context: Context) {
         val NICKNAME = stringPreferencesKey("nickname")
         val REGISTERED_AT = longPreferencesKey("registered_at")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val SCHEME = stringPreferencesKey("scheme")
         val LIGHT_SCHEME = stringPreferencesKey("light_scheme")
         val DARK_SCHEME = stringPreferencesKey("dark_scheme")
         val DEFAULT_SORT = stringPreferencesKey("default_sort")
@@ -45,6 +48,7 @@ class UserPreferencesRepository(private val context: Context) {
             nickname = this[Keys.NICKNAME] ?: defaults.nickname,
             registeredAt = this[Keys.REGISTERED_AT] ?: 0L,
             themeMode = runCatching { ThemeMode.valueOf(this[Keys.THEME_MODE] ?: "") }.getOrDefault(defaults.themeMode),
+            schemeId = this[Keys.SCHEME],
             lightSchemeId = this[Keys.LIGHT_SCHEME] ?: defaults.lightSchemeId,
             darkSchemeId = this[Keys.DARK_SCHEME] ?: defaults.darkSchemeId,
             defaultSort = this[Keys.DEFAULT_SORT] ?: defaults.defaultSort,
@@ -58,9 +62,11 @@ class UserPreferencesRepository(private val context: Context) {
     }
 
     suspend fun setNickname(name: String) = context.dataStore.edit { it[Keys.NICKNAME] = name }
-    suspend fun setThemeMode(mode: ThemeMode) = context.dataStore.edit { it[Keys.THEME_MODE] = mode.name }
-    suspend fun setLightScheme(id: String) = context.dataStore.edit { it[Keys.LIGHT_SCHEME] = id }
-    suspend fun setDarkScheme(id: String) = context.dataStore.edit { it[Keys.DARK_SCHEME] = id }
+    suspend fun setThemeMode(mode: ThemeMode) = context.dataStore.edit {
+        it[Keys.THEME_MODE] = mode.name
+        it[Keys.SCHEME] = "default"
+    }
+    suspend fun setScheme(id: String) = context.dataStore.edit { it[Keys.SCHEME] = id }
     suspend fun setDefaultSort(sort: String) = context.dataStore.edit { it[Keys.DEFAULT_SORT] = sort }
     suspend fun setDateFormat(format: String) = context.dataStore.edit { it[Keys.DATE_FORMAT] = format }
 }
