@@ -6,6 +6,7 @@ import com.mazzzuta.travellog.database.EntryEntity
 import com.mazzzuta.travellog.database.EntryRepository
 import com.mazzzuta.travellog.database.TagEntity
 import com.mazzzuta.travellog.database.TripRepository
+import com.mazzzuta.travellog.database.TripEntity
 import com.mazzzuta.travellog.utils.GeocoderHelper
 import com.mazzzuta.travellog.utils.LocationHelper
 import com.mazzzuta.travellog.utils.PhotoStorageHelper
@@ -19,6 +20,9 @@ import kotlinx.coroutines.CancellationException
 import java.io.File
 
 data class CreateEntryUiState(
+    val date: Long = System.currentTimeMillis(),
+    val availableTrips: List<TripEntity> = emptyList(),
+    val tripId: Long? = null,
     val title: String = "",
     val description: String = "",
     val photoUris: List<String> = emptyList(),
@@ -64,6 +68,8 @@ class CreateEntryViewModel(
                     it.copy(
                         title = details.entry.title,
                         description = details.entry.description,
+                        date = details.entry.date,
+                        tripId = details.entry.tripId,
                         photoUris = details.photos.sortedBy { photo -> photo.orderIndex }.map { photo -> photo.filePath },
                         selectedTagIds = details.tags.map { tag -> tag.id }.toSet(),
                         latitude = details.entry.latitude,
@@ -83,6 +89,13 @@ class CreateEntryViewModel(
                 _uiState.update { it.copy(availableTags = tags) }
             }
         }
+        viewModelScope.launch {
+            tripRepository.getAllTrips().collect { trips ->
+                _uiState.update {
+                    it.copy(availableTrips = trips, tripId = it.tripId ?: if (entryId == null) trips.firstOrNull()?.id else null)
+                }
+            }
+        }
     }
 
     fun onTitleChanged(text: String) {
@@ -91,6 +104,14 @@ class CreateEntryViewModel(
 
     fun onDescriptionChanged(text: String) {
         _uiState.update { it.copy(description = text) }
+    }
+
+    fun onDateChanged(date: Long) {
+        _uiState.update { it.copy(date = date) }
+    }
+
+    fun onTripSelected(tripId: Long?) {
+        _uiState.update { it.copy(tripId = tripId) }
     }
 
     fun onPhotosPicked(uris: List<String>) {
@@ -168,12 +189,15 @@ class CreateEntryViewModel(
                     else photoStorageHelper.saveToInternalStorage(uri).also { copiedPaths.add(it) }
                 }
                 val original = originalEntry
+                val tripId = state.tripId ?: original?.tripId ?: tripRepository.ensureDefaultTrip()
                 val entry = (original ?: EntryEntity(
-                    tripId = tripRepository.ensureDefaultTrip(),
-                    title = "", description = "", date = System.currentTimeMillis(),
+                    tripId = tripId,
+                    title = "", description = "", date = state.date,
                     latitude = 0.0, longitude = 0.0,
                 )).copy(
                     title = state.title.trim(), description = state.description.trim(),
+                    date = state.date,
+                    tripId = tripId,
                     latitude = state.latitude ?: 0.0, longitude = state.longitude ?: 0.0,
                     placeName = state.placeName, updatedAt = System.currentTimeMillis(),
                 )

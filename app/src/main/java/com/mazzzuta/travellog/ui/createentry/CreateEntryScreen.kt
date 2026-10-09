@@ -30,8 +30,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.mazzzuta.travellog.utils.LocalDateFormat
+import com.mazzzuta.travellog.utils.formatDate
+import com.mazzzuta.travellog.utils.toDatePickerMillis
+import com.mazzzuta.travellog.utils.fromDatePickerMillis
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEntryScreen(
     onSaved: () -> Unit,
@@ -185,7 +190,55 @@ fun CreateEntryScreen(
 
             Spacer(Modifier.height(20.dp))
 
+            var showDatePicker by rememberSaveable { mutableStateOf(false) }
+            OutlinedButton(
+                onClick = { showDatePicker = true },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                Spacer(Modifier.width(12.dp))
+                Text("Дата: ${formatDate(state.date, LocalDateFormat.current)}", modifier = Modifier.weight(1f))
+                Text("Изменить")
+            }
+            if (showDatePicker) {
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = toDatePickerMillis(state.date))
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(
+                            enabled = datePickerState.selectedDateMillis != null,
+                            onClick = {
+                                datePickerState.selectedDateMillis?.let { viewModel.onDateChanged(fromDatePickerMillis(it)) }
+                                showDatePicker = false
+                            },
+                        ) { Text("Выбрать") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) { Text("Отмена") }
+                    },
+                ) { DatePicker(state = datePickerState) }
+            }
+            Spacer(Modifier.height(20.dp))
+
             // Теги
+            var tripMenuExpanded by remember { mutableStateOf(false) }
+            Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                OutlinedButton(onClick = { tripMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Luggage, contentDescription = null)
+                    Spacer(Modifier.width(12.dp))
+                    Text(state.availableTrips.firstOrNull { it.id == state.tripId }?.title ?: "Мои путешествия (по умолчанию)", modifier = Modifier.weight(1f))
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Выбрать поездку")
+                }
+                DropdownMenu(expanded = tripMenuExpanded, onDismissRequest = { tripMenuExpanded = false }) {
+                    if (state.tripId == null) DropdownMenuItem(text = { Text("Мои путешествия (по умолчанию)") }, onClick = { tripMenuExpanded = false })
+                    state.availableTrips.forEach { trip ->
+                        DropdownMenuItem(text = { Text(trip.title) }, onClick = { viewModel.onTripSelected(trip.id); tripMenuExpanded = false })
+                    }
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+
             Text("ТЕГИ", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 20.dp, bottom = 12.dp))
             FlowRow(
                 modifier = Modifier.padding(horizontal = 20.dp),
