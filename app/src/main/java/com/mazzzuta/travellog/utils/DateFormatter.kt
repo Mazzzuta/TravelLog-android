@@ -3,6 +3,7 @@ package com.mazzzuta.travellog.utils
 import androidx.compose.runtime.compositionLocalOf
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -18,6 +19,15 @@ enum class DateFormatOption(val id: String, val label: String, val pattern: Stri
 
 /** Текущий формат даты доступен любому экрану без передачи через параметры. */
 val LocalDateFormat = compositionLocalOf { DateFormatOption.DMY }
+
+// DatePicker представляет календарный день полуночью UTC, а записи отображаются в локальном поясе.
+fun toDatePickerMillis(timestampMillis: Long): Long = Instant.ofEpochMilli(timestampMillis)
+    .atZone(ZoneId.systemDefault()).toLocalDate()
+    .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+fun fromDatePickerMillis(timestampMillis: Long): Long = Instant.ofEpochMilli(timestampMillis)
+    .atZone(ZoneOffset.UTC).toLocalDate()
+    .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
 /** Форматирует метку времени (мс) по выбранному формату. */
 fun formatDate(timestampMillis: Long, format: DateFormatOption): String =
