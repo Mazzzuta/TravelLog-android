@@ -225,12 +225,23 @@ fun CreateEntryScreen(
                 Text("Изменить")
             }
             if (showDatePicker) {
-                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = toDatePickerMillis(state.date))
+                val selectableDates = remember {
+                    object : SelectableDates {
+                        override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                            utcTimeMillis <= toDatePickerMillis(System.currentTimeMillis())
+
+                        override fun isSelectableYear(year: Int): Boolean = year <= java.time.Year.now().value
+                    }
+                }
+                val datePickerState = rememberDatePickerState(
+                    initialSelectedDateMillis = toDatePickerMillis(state.date),
+                    selectableDates = selectableDates,
+                )
                 DatePickerDialog(
                     onDismissRequest = { showDatePicker = false },
                     confirmButton = {
                         TextButton(
-                            enabled = datePickerState.selectedDateMillis != null,
+                            enabled = datePickerState.selectedDateMillis?.let(selectableDates::isSelectableDate) == true,
                             onClick = {
                                 datePickerState.selectedDateMillis?.let { viewModel.onDateChanged(fromDatePickerMillis(it)) }
                                 showDatePicker = false

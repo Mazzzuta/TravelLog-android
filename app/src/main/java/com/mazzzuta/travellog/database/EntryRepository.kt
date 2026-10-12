@@ -3,6 +3,7 @@ package com.mazzzuta.travellog.database
 import kotlinx.coroutines.flow.Flow
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.first
+import com.mazzzuta.travellog.utils.isFutureDate
 
 class EntryRepository(
     private val entryDao: EntryDao,
@@ -24,6 +25,7 @@ class EntryRepository(
         entryDao.getEntryWithDetails(entryId)
 
     suspend fun createEntry(entry: EntryEntity, photoPaths: List<String>, tagIds: List<Long>, autoAssignTrip: Boolean = false): Long = database.withTransaction {
+        require(!isFutureDate(entry.date)) { "Дата записи не может быть позже сегодняшнего дня" }
         val resolved = resolveEntryTrip(entry, database.tripDao().getAllTrips().first(), autoAssignTrip)
         val entryId = entryDao.insert(resolved)
         if (photoPaths.isNotEmpty()) {
@@ -39,6 +41,7 @@ class EntryRepository(
 
     suspend fun updateEntry(entry: EntryEntity, photoPaths: List<String>, tagIds: List<Long>, autoAssignTrip: Boolean = false) {
         database.withTransaction {
+            require(!isFutureDate(entry.date)) { "Дата записи не может быть позже сегодняшнего дня" }
             check(entryDao.getEntryWithDetails(entry.id).first() != null) { "Запись уже удалена" }
             val resolved = resolveEntryTrip(entry, database.tripDao().getAllTrips().first(), autoAssignTrip)
             entryDao.update(resolved)

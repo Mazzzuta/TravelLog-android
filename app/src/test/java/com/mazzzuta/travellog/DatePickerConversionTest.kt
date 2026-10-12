@@ -2,6 +2,9 @@ package com.mazzzuta.travellog
 
 import com.mazzzuta.travellog.utils.fromDatePickerMillis
 import com.mazzzuta.travellog.utils.toDatePickerMillis
+import com.mazzzuta.travellog.utils.isFutureDate
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
@@ -10,6 +13,17 @@ import java.time.ZoneId
 import java.util.TimeZone
 
 class DatePickerConversionTest {
+    @Test fun futureDatesUseLocalDayAndAllowAllOfToday() {
+        val today = LocalDate.of(2026, 10, 12)
+        for (name in listOf("Asia/Chita", "America/Los_Angeles")) {
+            val zone = ZoneId.of(name)
+            fun timestamp(day: LocalDate, hour: Int) = day.atTime(hour, 59).atZone(zone).toInstant().toEpochMilli()
+            assertFalse(isFutureDate(timestamp(today.minusDays(1), 23), zone, today))
+            assertFalse(isFutureDate(timestamp(today, 23), zone, today))
+            assertTrue(isFutureDate(timestamp(today.plusDays(1), 0), zone, today))
+        }
+    }
+
     @Test
     fun pickerPreservesCalendarDayAcrossTimeZones() {
         val originalZone = TimeZone.getDefault()

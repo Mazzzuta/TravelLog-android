@@ -16,7 +16,7 @@ class TripDatesRepositoryTest {
     private lateinit var database: AppDatabase
     private lateinit var trips: TripRepository
     private lateinit var entries: EntryRepository
-    private fun date(day: Int, hour: Int = 0) = LocalDate.of(2026, 10, day).atTime(hour, 0)
+    private fun date(day: Int, hour: Int = 0) = LocalDate.of(2020, 10, day).atTime(hour, 0)
         .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     private fun trip(start: Int = 10, end: Int = 12) = TripEntity(title = "Самара", startDate = date(start), endDate = date(end))
     private fun entry(day: Int, tripId: Long? = null) = EntryEntity(title = "Запись", description = "", date = date(day, 23), tripId = tripId)
@@ -74,5 +74,16 @@ class TripDatesRepositoryTest {
         assertEquals(1, results.count { it.isSuccess })
         assertTrue(results.single { it.isFailure }.exceptionOrNull() is IllegalArgumentException)
         assertEquals(1, trips.getAllTrips().first().size)
+    }
+
+    @Test fun futureEntryCannotBeCreatedOrReplaceExistingEntry() = runBlocking {
+        val tomorrow = LocalDate.now().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val future = entry(10).copy(date = tomorrow)
+        rejects { entries.createEntry(future, listOf("new.jpg"), emptyList()) }
+        assertTrue(entries.searchEntries().first().isEmpty())
+        val id = entries.createEntry(entry(10), listOf("keep.jpg"), emptyList())
+        val before = entries.getEntryWithDetails(id).first()!!
+        rejects { entries.updateEntry(before.entry.copy(date = tomorrow), listOf("replace.jpg"), emptyList()) }
+        assertEquals(before, entries.getEntryWithDetails(id).first())
     }
 }
