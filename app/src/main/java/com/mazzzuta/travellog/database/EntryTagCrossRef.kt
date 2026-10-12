@@ -3,6 +3,7 @@ package com.mazzzuta.travellog.database
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
+import kotlinx.serialization.Serializable
 
 @Entity(
     tableName = "entry_tag_cross_ref",
@@ -23,6 +24,7 @@ import androidx.room.Index
     ],
     indices = [Index("entryId"), Index("tagId")]
 )
+@Serializable
 data class EntryTagCrossRef(
     val entryId: Long,
     val tagId: Long

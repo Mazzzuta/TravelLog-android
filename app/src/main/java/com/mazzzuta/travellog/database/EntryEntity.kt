@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 @Entity(
     tableName = "entries",
@@ -17,6 +18,7 @@ import androidx.room.PrimaryKey
     ],
     indices = [Index("tripId")]
 )
+@Serializable
 data class EntryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val tripId: Long? = null,

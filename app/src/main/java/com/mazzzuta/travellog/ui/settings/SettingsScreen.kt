@@ -155,6 +155,9 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
 
         Spacer(Modifier.height(24.dp))
 
+        BackupSection()
+        Spacer(Modifier.height(24.dp))
+
         // Прочее
         SectionLabel("ПРОЧЕЕ")
         SettingsCard {

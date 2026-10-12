@@ -48,7 +48,23 @@ object Palettes {
         Color(0xFFC9D3CA), Color(0xFF4C5D5C), Color(0xFF0B1112), Color(0xFF6B7D7B), Color(0xFFD98B7C)
     )
 
-    val all = listOf(LightBase, Force, DarkBase, Berries, Jellyfish)
+    val Neon = AppPalette(
+        "neon", "Неон", true,
+        Color(0xFF0A0A0A), Color(0xFF181C12), Color(0xFF39442A), Color(0xFFF2F6EA), Color(0xFFADB89B),
+        Color(0xFFB6FF00), Color(0xFF293A0B), Color(0xFF0A0A0A), Color(0xFF88D894), Color(0xFFFFA89A)
+    )
+    val RoseGraphite = AppPalette(
+        "rose_graphite", "Розовый графит", true,
+        Color(0xFF292929), Color(0xFF343033), Color(0xFF58474D), Color(0xFFF8EDF0), Color(0xFFC7B4BA),
+        Color(0xFFC88E9B), Color(0xFF50353E), Color(0xFF292929), Color(0xFF9ED5B3), Color(0xFFFFB4A8)
+    )
+    val ElectricBlue = AppPalette(
+        "electric_blue", "Электрический синий", true,
+        Color(0xFF101A46), Color(0xFF192554), Color(0xFF354777), Color(0xFFF0F3FF), Color(0xFFB4C2F1),
+        Color(0xFF245BFF), Color(0xFF193477), Color(0xFFFFFFFF), Color(0xFF8ADCC0), Color(0xFFFFB4A8)
+    )
+
+    val all = listOf(LightBase, Force, DarkBase, Berries, Jellyfish, Neon, RoseGraphite, ElectricBlue)
     val additional = all.filter { it != LightBase && it != DarkBase }
 
     fun resolve(prefs: UserPrefs, systemDark: Boolean): AppPalette {

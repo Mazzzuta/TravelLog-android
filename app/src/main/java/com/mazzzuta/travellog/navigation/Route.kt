@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 sealed interface Route {
     @Serializable data object Feed : Route
     @Serializable data object MapScreen : Route
+    @Serializable data class EntryMap(val entryId: Long) : Route
     @Serializable data object CreateEntry : Route
     @Serializable data class EditEntry(val entryId: Long) : Route
     @Serializable data class EntryDetail(val entryId: Long) : Route
@@ -15,6 +16,6 @@ sealed interface Route {
 }
 
 fun Route.hasBottomNav(): Boolean = when (this) {
-    is Route.CreateEntry, is Route.EditEntry, is Route.EntryDetail, is Route.Trips -> false
+    is Route.CreateEntry, is Route.EditEntry, is Route.EntryDetail, is Route.EntryMap, is Route.Trips -> false
     else -> true
 }
