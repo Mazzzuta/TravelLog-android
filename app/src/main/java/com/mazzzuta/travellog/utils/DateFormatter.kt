@@ -2,6 +2,7 @@ package com.mazzzuta.travellog.utils
 
 import androidx.compose.runtime.compositionLocalOf
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -28,6 +29,10 @@ fun toDatePickerMillis(timestampMillis: Long): Long = Instant.ofEpochMilli(times
 fun fromDatePickerMillis(timestampMillis: Long): Long = Instant.ofEpochMilli(timestampMillis)
     .atZone(ZoneOffset.UTC).toLocalDate()
     .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+fun isFutureDate(timestampMillis: Long, zone: ZoneId = ZoneId.systemDefault(),
+    today: LocalDate = LocalDate.now(zone)): Boolean =
+    Instant.ofEpochMilli(timestampMillis).atZone(zone).toLocalDate() > today
 
 fun endOfDayMillis(timestampMillis: Long): Long = Instant.ofEpochMilli(timestampMillis)
     .atZone(ZoneId.systemDefault()).toLocalDate().plusDays(1)
