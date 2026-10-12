@@ -31,6 +31,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.mazzzuta.travellog.database.containsDate
 import com.mazzzuta.travellog.utils.LocalDateFormat
 import com.mazzzuta.travellog.utils.formatDate
 import com.mazzzuta.travellog.utils.toDatePickerMillis
@@ -243,21 +244,29 @@ fun CreateEntryScreen(
             }
             Spacer(Modifier.height(20.dp))
 
-            // Теги
+            // Привязка к поездке
             var tripMenuExpanded by remember { mutableStateOf(false) }
             Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                 OutlinedButton(onClick = { tripMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Luggage, contentDescription = null)
                     Spacer(Modifier.width(12.dp))
-                    Text(state.availableTrips.firstOrNull { it.id == state.tripId }?.title ?: "Без поездки", modifier = Modifier.weight(1f))
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Выбрать поездку")
+                    Text(if (state.autoAssignTrip) "Автоопределение" else "Без поездки", modifier = Modifier.weight(1f))
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Выбрать способ привязки к поездке")
                 }
                 DropdownMenu(expanded = tripMenuExpanded, onDismissRequest = { tripMenuExpanded = false }) {
-                    DropdownMenuItem(text = { Text("Без поездки") }, onClick = { viewModel.onTripSelected(null); tripMenuExpanded = false })
-                    state.availableTrips.forEach { trip ->
-                        DropdownMenuItem(text = { Text(trip.title) }, onClick = { viewModel.onTripSelected(trip.id); tripMenuExpanded = false })
-                    }
+                    DropdownMenuItem(text = { Text("Без поездки") }, onClick = { viewModel.onTripAssignmentChanged(false); tripMenuExpanded = false })
+                    DropdownMenuItem(text = { Text("Автоопределение") }, onClick = { viewModel.onTripAssignmentChanged(true); tripMenuExpanded = false })
                 }
+            }
+            if (state.autoAssignTrip) {
+                val matches = state.availableTrips.filter { it.containsDate(state.date) }
+                Text(when (matches.size) {
+                    0 -> "Поездка на эту дату не найдена. Запись сохранится без поездки."
+                    1 -> "Поездка: «${matches.single().title}»"
+                    else -> "На эту дату найдено несколько поездок. Исправьте пересечение их периодов."
+                }, modifier = Modifier.padding(horizontal = 20.dp),
+                    color = if (matches.size > 1) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.height(20.dp))
 

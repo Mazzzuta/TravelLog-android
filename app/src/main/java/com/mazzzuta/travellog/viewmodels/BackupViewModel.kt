@@ -77,7 +77,9 @@ class BackupViewModel(private val manager: BackupManager) : ViewModel() {
             } catch (e: Exception) {
                 _state.value = BackupUiState(message = when (operation) {
                     "Создание архива…" -> "Не удалось сохранить архив. Проверьте свободное место и доступ к файлу."
-                    "Проверка архива…" -> "Архив повреждён, несовместим или недоступен. Дневник не изменён."
+                    "Проверка архива…" -> if (e is IllegalArgumentException && e.message?.startsWith("В архиве ") == true)
+                        "${e.message?.take(300)}. Дневник не изменён."
+                        else "Архив повреждён, несовместим или недоступен. Дневник не изменён."
                     else -> "Не удалось восстановить дневник. Текущие записи сохранены."
                 })
             }
