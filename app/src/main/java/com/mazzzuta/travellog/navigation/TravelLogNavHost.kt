@@ -64,6 +64,17 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
             composable<Route.MapScreen> {
                 MapScreen(onEntryClick = { id -> navController.navigate(Route.EntryDetail(id)) })
             }
+            composable<Route.EntryMap> { backStackEntry ->
+                val args = backStackEntry.toRoute<Route.EntryMap>()
+                MapScreen(
+                    focusEntryId = args.entryId,
+                    onBack = { navController.popBackStack() },
+                    onEntryClick = { id ->
+                        navController.popBackStack()
+                        if (id != args.entryId) navController.navigate(Route.EntryDetail(id))
+                    },
+                )
+            }
             composable<Route.CreateEntry> {
                 CreateEntryScreen(
                     onSaved = { navController.popBackStack() },
@@ -75,7 +86,8 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
                 EntryDetailScreen(
                     entryId = args.entryId,
                     onBack = { navController.popBackStack() },
-                    onEdit = { navController.navigate(Route.EditEntry(args.entryId)) }
+                    onEdit = { navController.navigate(Route.EditEntry(args.entryId)) },
+                    onMapClick = { navController.navigate(Route.EntryMap(args.entryId)) }
                 )
             }
             composable<Route.EditEntry> { backStackEntry ->
@@ -86,7 +98,9 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
                     onCancel = { navController.popBackStack() }
                 )
             }
-            composable<Route.Statistics> { StatisticsScreen() }
+            composable<Route.Statistics> {
+                StatisticsScreen(onCreateClick = { navController.navigate(Route.CreateEntry) })
+            }
             composable<Route.Settings> { SettingsScreen() }
             composable<Route.Trips> {
                 TripsScreen(

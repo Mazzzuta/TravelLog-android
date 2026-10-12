@@ -2,6 +2,8 @@ package com.mazzzuta.travellog.ui.entrydetail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -33,12 +35,15 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import com.mazzzuta.travellog.utils.LocalDateFormat
 import com.mazzzuta.travellog.utils.formatDate
+import com.mazzzuta.travellog.database.hasCoordinates
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EntryDetailScreen(
     entryId: Long,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onMapClick: () -> Unit,
     viewModel: EntryDetailViewModel = koinViewModel(parameters = { parametersOf(entryId) })
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -49,9 +54,18 @@ fun EntryDetailScreen(
     }
 
     val entryWithDetails = state.entry
-    if (state.isLoading || entryWithDetails == null) {
+    if (state.isLoading || state.isDeleted || (state.isDeleting && entryWithDetails == null)) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
+        }
+        return
+    }
+    if (state.loadError != null || entryWithDetails == null) {
+        Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(state.loadError ?: "Запись не найдена", style = MaterialTheme.typography.titleMedium)
+            if (state.loadError != null) TextButton(onClick = viewModel::load) { Text("Повторить") }
+            TextButton(onClick = onBack) { Text("Назад") }
         }
         return
     }
@@ -59,7 +73,7 @@ fun EntryDetailScreen(
     val entry = entryWithDetails.entry
     val photos = entryWithDetails.photos
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
 
         // Галерея фото
         Box(modifier = Modifier.fillMaxWidth().height(300.dp)) {
@@ -137,7 +151,7 @@ fun EntryDetailScreen(
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
 
             if (entryWithDetails.tags.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     entryWithDetails.tags.forEach { tag ->
                         AssistChip(onClick = {}, label = { Text(tag.name) })
                     }
@@ -158,6 +172,10 @@ fun EntryDetailScreen(
 
             Spacer(Modifier.height(8.dp))
 
+            Text(state.tripTitle?.let { "Поездка: $it" } ?: "Без поездки",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+
             entry.placeName?.let {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(14.dp))
@@ -168,6 +186,14 @@ fun EntryDetailScreen(
 
             Spacer(Modifier.height(16.dp))
 
+            if (entry.hasCoordinates()) {
+                TextButton(onClick = onMapClick, enabled = !state.isDeleting) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("На карте")
+                }
+            }
+
             Text(entry.description, style = MaterialTheme.typography.bodyLarge)
 
             Spacer(Modifier.height(24.dp))
@@ -175,6 +201,7 @@ fun EntryDetailScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = onEdit,
+                    enabled = !state.isDeleting,
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -183,6 +210,7 @@ fun EntryDetailScreen(
                 }
                 FilledTonalButton(
                     onClick = { viewModel.onDeleteClick() },
+                    enabled = !state.isDeleting,
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.error
@@ -195,7 +223,7 @@ fun EntryDetailScreen(
     }
 
     // Полноэкранный просмотр фото
-    fullscreenPage?.let { startPage ->
+    fullscreenPage?.takeIf { it in photos.indices }?.let { startPage ->
         FullscreenPhotoViewer(
             photoPaths = photos.map { it.filePath },
             startPage = startPage,
@@ -208,14 +236,20 @@ fun EntryDetailScreen(
         AlertDialog(
             onDismissRequest = { viewModel.onDeleteDismiss() },
             title = { Text("Удалить запись?") },
-            text = { Text("Это действие нельзя отменить.") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Это действие нельзя отменить.")
+                    if (state.isDeleting) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    state.deleteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
             confirmButton = {
-                TextButton(onClick = { viewModel.onDeleteConfirm() }) {
+                TextButton(enabled = !state.isDeleting, onClick = { viewModel.onDeleteConfirm() }) {
                     Text("Удалить", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.onDeleteDismiss() }) { Text("Отмена") }
+                TextButton(enabled = !state.isDeleting, onClick = { viewModel.onDeleteDismiss() }) { Text("Отмена") }
             }
         )
     }

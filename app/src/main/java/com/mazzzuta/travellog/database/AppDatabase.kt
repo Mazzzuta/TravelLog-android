@@ -22,6 +22,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun entryDao(): EntryDao
     abstract fun photoDao(): PhotoDao
     abstract fun tagDao(): TagDao
+    abstract fun backupDao(): BackupDao
 
 }
 
