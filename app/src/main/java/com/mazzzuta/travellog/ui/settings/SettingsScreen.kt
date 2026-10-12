@@ -3,6 +3,7 @@ package com.mazzzuta.travellog.ui.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -42,7 +44,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
 
     val p = state.prefs
     if (p == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
             if (state.isLoading) CircularProgressIndicator()
             else Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(state.loadError ?: "Не удалось загрузить настройки", color = MaterialTheme.colorScheme.error)
@@ -58,18 +60,15 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
             .padding(top = 16.dp, bottom = 24.dp)
     ) {
-        Text("TRAVEL LOG", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("Настройки", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
 
-        Spacer(Modifier.height(20.dp))
-        if (state.isSaving || state.isLoading) {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(if (state.isSaving) "Сохранение настроек…" else "Загрузка настроек…")
-            Spacer(Modifier.height(12.dp))
+        Box(Modifier.fillMaxWidth().height(20.dp), contentAlignment = Alignment.Center) {
+            if (state.isSaving || state.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
         state.loadError?.let {
             Text(it, color = MaterialTheme.colorScheme.error)
@@ -148,9 +147,9 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
         )
         Spacer(Modifier.height(10.dp))
         Palettes.additional.chunked(2).forEach { rowItems ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp).height(IntrinsicSize.Min)) {
                 rowItems.forEach { palette ->
-                    PaletteTile(palette, palette == activePalette, Modifier.weight(1f)) { viewModel.setScheme(palette) }
+                    PaletteTile(palette, palette == activePalette, Modifier.weight(1f).fillMaxHeight()) { viewModel.setScheme(palette) }
                 }
                 if (rowItems.size == 1) Spacer(Modifier.weight(1f))
             }
@@ -291,7 +290,7 @@ private fun ThemeModeCard(label: String, brush: Brush, selected: Boolean, modifi
             .clip(shape)
             .background(MaterialTheme.colorScheme.surface)
             .border(if (selected) 2.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, shape)
-            .clickable(onClick = onClick)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -322,7 +321,7 @@ private fun PaletteTile(palette: AppPalette, selected: Boolean, modifier: Modifi
             .clip(shape)
             .background(MaterialTheme.colorScheme.surface)
             .border(if (selected) 2.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, shape)
-            .clickable(onClick = onClick)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(12.dp)
     ) {
         Row(modifier = Modifier.clip(RoundedCornerShape(12.dp))) {
@@ -331,17 +330,15 @@ private fun PaletteTile(palette: AppPalette, selected: Boolean, modifier: Modifi
             }
         }
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                palette.name,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (selected) Icon(Icons.Default.Check, contentDescription = "Выбрано", tint = palette.primary, modifier = Modifier.size(18.dp))
-        }
+        Text(
+            palette.name,
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            minLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

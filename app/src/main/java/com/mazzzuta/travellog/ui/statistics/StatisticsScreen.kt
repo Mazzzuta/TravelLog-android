@@ -1,6 +1,7 @@
 package com.mazzzuta.travellog.ui.statistics
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -35,7 +36,7 @@ fun StatisticsScreen(onCreateClick: () -> Unit, viewModel: StatisticsViewModel =
     val state by viewModel.uiState.collectAsState()
     var chosenYear by rememberSaveable { mutableStateOf<Int?>(null) }
     var yearMenu by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Статистика", style = MaterialTheme.typography.headlineSmall)
         when {
