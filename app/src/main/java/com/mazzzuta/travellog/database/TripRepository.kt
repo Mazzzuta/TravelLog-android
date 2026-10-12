@@ -13,7 +13,6 @@ class TripRepository(private val tripDao: TripDao) {
         validateTrip(trip)
         tripDao.update(trip.copy(title = trip.title.trim()))
     }
-    // shortcut: каскад удаляет строки, файлы фото остаются; очистку добавить с учётом обложек других поездок.
     suspend fun deleteTrip(trip: TripEntity, deleteEntries: Boolean = false) {
         if (deleteEntries) tripDao.delete(trip) else tripDao.deleteKeepingEntries(trip)
     }

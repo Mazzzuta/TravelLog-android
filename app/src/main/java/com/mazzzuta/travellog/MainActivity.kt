@@ -5,9 +5,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import com.mazzzuta.travellog.database.UserPrefs
+import kotlinx.coroutines.CancellationException
 import com.mazzzuta.travellog.database.UserPreferencesRepository
 import com.mazzzuta.travellog.navigation.TravelLogNavHost
 import com.mazzzuta.travellog.ui.theme.Palettes
@@ -24,16 +28,31 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            // null, пока настройки не прочитаны: так не мелькает светлая тема у тех, кто выбрал тёмную
-            val prefs by prefsRepository.preferencesFlow.collectAsState(initial = null)
-            val current = prefs ?: return@setContent
+            var retry by remember { mutableIntStateOf(0) }
+            var readError by remember { mutableStateOf(false) }
+            val prefs by produceState<UserPrefs?>(initialValue = null, retry) {
+                readError = false
+                try { prefsRepository.preferencesFlow.collect { value = it } }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { readError = true }
+            }
+            val current = prefs ?: UserPrefs()
 
             val systemDark = isSystemInDarkTheme()
             val palette = Palettes.resolve(current, systemDark)
 
             CompositionLocalProvider(LocalDateFormat provides DateFormatOption.fromId(current.dateFormat)) {
                 TravelLogTheme(palette = palette) {
-                    TravelLogNavHost()
+                    Column(Modifier.fillMaxSize()) {
+                        if (readError) {
+                            Text("Не удалось загрузить оформление и формат даты", color = MaterialTheme.colorScheme.error)
+                            TextButton(onClick = { retry++ }) { Text("Повторить") }
+                        }
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            if (prefs != null) TravelLogNavHost()
+                            else if (!readError) CircularProgressIndicator()
+                        }
+                    }
                 }
             }
         }

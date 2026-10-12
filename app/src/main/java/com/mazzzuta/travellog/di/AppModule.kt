@@ -15,6 +15,7 @@ import org.koin.androidx.viewmodel.dsl.viewModel
 import com.mazzzuta.travellog.utils.GeocoderHelper
 import com.mazzzuta.travellog.utils.LocationHelper
 import com.mazzzuta.travellog.utils.PhotoStorageHelper
+import com.mazzzuta.travellog.utils.PhotoCleanup
 import com.mazzzuta.travellog.viewmodels.CreateEntryViewModel
 import com.mazzzuta.travellog.viewmodels.EntryDetailViewModel
 import com.mazzzuta.travellog.database.UserPreferencesRepository
@@ -48,14 +49,15 @@ val appModule = module {
     single { GeocoderHelper(androidContext()) }
     single { LocationHelper(androidContext()) }
     single { PhotoStorageHelper(androidContext()) }
+    single { PhotoCleanup(androidContext(), get(), get()) }
 
     single { UserPreferencesRepository(androidContext()) }
-    single { BackupManager(androidContext(), get(), get()) }
+    single { BackupManager(androidContext(), get(), get(), get()) }
     viewModel { BackupViewModel(get()) }
-    viewModel { SettingsViewModel(get()) }
+    viewModel { SettingsViewModel(get(), get()) }
     viewModel { TripsViewModel(get(), get()) }
     viewModel { MapViewModel(get(), get()) }
     viewModel { StatisticsViewModel(get(), get()) }
 
-    viewModel { parameters -> CreateEntryViewModel(get(), get(), get(), get(), get(), parameters.getOrNull<Long>()) }
+    viewModel { parameters -> CreateEntryViewModel(get(), get(), get(), get(), get(), parameters.getOrNull<Long>(), get()) }
 }

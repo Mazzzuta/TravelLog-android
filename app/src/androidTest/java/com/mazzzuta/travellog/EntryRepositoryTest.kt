@@ -38,6 +38,14 @@ class EntryRepositoryTest {
     }
 
     @Test
+    fun creatingTagReusesNameIgnoringCaseAndWhitespace() = runBlocking {
+        val first = repository.createTag("  Лес  ")
+        val second = repository.createTag("лес")
+        assertEquals(first, second)
+        assertEquals(1, repository.getAllTags().first().count { it.name.equals("Лес", ignoreCase = true) })
+    }
+
+    @Test
     fun editingReplacesPhotosAndTagsAndPreservesEntryIdentity() = runBlocking {
         val before = repository.getEntryWithDetails(entryId).first()!!.entry
         repository.updateEntry(before.copy(title = "После", description = "Новый текст", updatedAt = 4000L),

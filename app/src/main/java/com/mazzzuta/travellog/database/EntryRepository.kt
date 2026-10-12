@@ -56,5 +56,10 @@ class EntryRepository(
     fun getTotalEntriesCount(): Flow<Int> = entryDao.getTotalEntriesCount()
     fun getTagUsageStats(): Flow<List<TagCount>> = tagDao.getTagUsageStats()
     fun getAllTags(): Flow<List<TagEntity>> = tagDao.getAllTags()
-    suspend fun createTag(name: String): Long = tagDao.insert(TagEntity(name = name))
+    suspend fun createTag(name: String): Long = database.withTransaction {
+        val trimmed = name.trim()
+        require(trimmed.isNotEmpty()) { "Введите название тега" }
+        tagDao.getAllTags().first().firstOrNull { it.name.trim().equals(trimmed, ignoreCase = true) }?.id
+            ?: tagDao.insert(TagEntity(name = trimmed))
+    }
 }
