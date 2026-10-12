@@ -5,6 +5,9 @@ import android.location.Address
 import android.location.Geocoder
 import android.os.Build
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.coroutines.resume
 
@@ -23,14 +26,17 @@ class GeocoderHelper(context: Context) {
     private suspend fun getAddress(lat: Double, lon: Double): Address? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             suspendCancellableCoroutine { continuation ->
-                geocoder.getFromLocation(lat, lon, 1) { addresses ->
-                    continuation.resume(addresses.firstOrNull())
-                }
+                geocoder.getFromLocation(lat, lon, 1, object : Geocoder.GeocodeListener {
+                    override fun onGeocode(addresses: MutableList<Address>) { if (continuation.isActive) continuation.resume(addresses.firstOrNull()) }
+                    override fun onError(errorMessage: String?) { if (continuation.isActive) continuation.resume(null) }
+                })
             }
         } else {
             @Suppress("DEPRECATION")
             try {
-                geocoder.getFromLocation(lat, lon, 1)?.firstOrNull()
+                withContext(Dispatchers.IO) { geocoder.getFromLocation(lat, lon, 1)?.firstOrNull() }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 null
             }
@@ -49,14 +55,17 @@ class GeocoderHelper(context: Context) {
     private suspend fun searchAddress(query: String): Address? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             suspendCancellableCoroutine { continuation ->
-                geocoder.getFromLocationName(query, 1) { addresses ->
-                    continuation.resume(addresses.firstOrNull())
-                }
+                geocoder.getFromLocationName(query, 1, object : Geocoder.GeocodeListener {
+                    override fun onGeocode(addresses: MutableList<Address>) { if (continuation.isActive) continuation.resume(addresses.firstOrNull()) }
+                    override fun onError(errorMessage: String?) { if (continuation.isActive) continuation.resume(null) }
+                })
             }
         } else {
             @Suppress("DEPRECATION")
             try {
-                geocoder.getFromLocationName(query, 1)?.firstOrNull()
+                withContext(Dispatchers.IO) { geocoder.getFromLocationName(query, 1)?.firstOrNull() }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 null
             }

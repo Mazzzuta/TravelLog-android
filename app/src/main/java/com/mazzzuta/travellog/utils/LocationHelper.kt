@@ -7,6 +7,7 @@ import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.CancellationException
 
 class LocationHelper(context: Context) {
 
@@ -19,6 +20,8 @@ class LocationHelper(context: Context) {
                 .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
                 .build()
             client.getCurrentLocation(request, null).await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             null
         }

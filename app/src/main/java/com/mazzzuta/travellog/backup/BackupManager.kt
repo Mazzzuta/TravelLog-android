@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.room.withTransaction
 import com.mazzzuta.travellog.database.AppDatabase
 import com.mazzzuta.travellog.database.UserPreferencesRepository
+import com.mazzzuta.travellog.utils.PhotoStorageHelper
 import java.io.File
 import java.util.UUID
 import java.util.zip.ZipFile
@@ -21,9 +22,9 @@ data class PreparedImport(val data: BackupData, val directory: File) {
 }
 
 class BackupManager(private val context: Context, private val database: AppDatabase,
-    private val preferences: UserPreferencesRepository) {
+    private val preferences: UserPreferencesRepository, private val storage: PhotoStorageHelper) {
 
-    suspend fun export(uri: Uri) = withContext(Dispatchers.IO) {
+    suspend fun export(uri: Uri) = storage.withPhotoAccess {
         val archive = File.createTempFile("travellog-export-", ".zip", context.cacheDir)
         try {
             val prefs = preferences.preferencesFlow.first()
@@ -89,7 +90,7 @@ class BackupManager(private val context: Context, private val database: AppDatab
     }
 
     /** false означает: дневник восстановлен, настройки не удалось записать. */
-    suspend fun restore(prepared: PreparedImport): Boolean = withContext(Dispatchers.IO) {
+    suspend fun restore(prepared: PreparedImport): Boolean = storage.withPhotoAccess {
         val destination = File(context.filesDir, "photos/import-${UUID.randomUUID()}")
         check(destination.mkdirs()) { "Не удалось подготовить фотографии" }
         var committed = false
@@ -123,7 +124,6 @@ class BackupManager(private val context: Context, private val database: AppDatab
             }
         } finally {
             if (!committed) destination.deleteRecursively()
-            // shortcut: старые фото остаются на диске; удалять их при добавлении общей очистки неиспользуемых файлов.
         }
     }
 }

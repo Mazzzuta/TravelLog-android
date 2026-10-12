@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,12 +35,22 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
-    val prefs by viewModel.prefs.collectAsState()
-    var showNicknameDialog by remember { mutableStateOf(false) }
-    var showAboutDialog by remember { mutableStateOf(false) }
+    val state by viewModel.state.collectAsState()
+    var showNicknameDialog by rememberSaveable { mutableStateOf(false) }
+    var showAboutDialog by rememberSaveable { mutableStateOf(false) }
     val systemDark = isSystemInDarkTheme()
 
-    val p = prefs ?: return
+    val p = state.prefs
+    if (p == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (state.isLoading) CircularProgressIndicator()
+            else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(state.loadError ?: "Не удалось загрузить настройки", color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = viewModel::load) { Text("Повторить") }
+            }
+        }
+        return
+    }
 
     val activePalette = Palettes.resolve(p, systemDark)
     val customSelected = activePalette in Palettes.additional
@@ -55,6 +66,16 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
         Text("Настройки", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
 
         Spacer(Modifier.height(20.dp))
+        if (state.isSaving || state.isLoading) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(if (state.isSaving) "Сохранение настроек…" else "Загрузка настроек…")
+            Spacer(Modifier.height(12.dp))
+        }
+        state.loadError?.let {
+            Text(it, color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = viewModel::load) { Text("Повторить загрузку") }
+        }
+        state.saveError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
         // Профиль: ник + дата первого запуска
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -63,7 +84,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    p.nickname.first().uppercase(),
+                    p.nickname.firstOrNull()?.uppercase() ?: "П",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -158,6 +179,19 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
         BackupSection()
         Spacer(Modifier.height(24.dp))
 
+        SectionLabel("ХРАНИЛИЩЕ")
+        SettingsCard {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Ненужные фотографии удаляются автоматически после изменения дневника. Можно повторить очистку вручную.")
+                OutlinedButton(onClick = viewModel::cleanPhotos, enabled = !state.isCleaning) {
+                    Text("Очистить ненужные фотографии")
+                }
+                if (state.isCleaning) LinearProgressIndicator(Modifier.fillMaxWidth())
+                state.cleanupMessage?.let { Text(it) }
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+
         // Прочее
         SectionLabel("ПРОЧЕЕ")
         SettingsCard {
@@ -170,7 +204,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
     }
 
     if (showNicknameDialog) {
-        var draft by remember { mutableStateOf(p.nickname) }
+        var draft by rememberSaveable(p.nickname) { mutableStateOf(p.nickname) }
         AlertDialog(
             onDismissRequest = { showNicknameDialog = false },
             title = { Text("Ваш никнейм") },
@@ -178,15 +212,18 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { if (it.length <= 30) draft = it },
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !state.isSaving,
+                    supportingText = {
+                        Text(state.saveError ?: "${draft.length}/30", color = if (state.saveError == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
+                    }
                 )
             },
             confirmButton = {
                 TextButton(
-                    enabled = draft.isNotBlank(),
+                    enabled = draft.isNotBlank() && !state.isSaving,
                     onClick = {
-                        viewModel.setNickname(draft)
-                        showNicknameDialog = false
+                        viewModel.setNickname(draft) { showNicknameDialog = false }
                     }
                 ) { Text("Сохранить") }
             },

@@ -47,7 +47,19 @@ fun CreateEntryScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-    BackHandler(enabled = state.isSaving) { }
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
+    val leave: () -> Unit = { if (state.hasChanges && !state.isSaved) showDiscardDialog = true else onCancel() }
+    BackHandler { if (!state.isSaving) leave() }
+
+    if (showDiscardDialog) {
+        AlertDialog(onDismissRequest = { showDiscardDialog = false }, title = { Text("Выйти без сохранения?") },
+            text = { Text("Изменения в записи будут потеряны.") },
+            confirmButton = { TextButton(onClick = { showDiscardDialog = false; onCancel() }) { Text("Выйти") } },
+            dismissButton = { TextButton(onClick = { showDiscardDialog = false }) { Text("Остаться") } })
+    }
+    LaunchedEffect(state.formError) {
+        state.formError?.let { snackbarHostState.showSnackbar(it); viewModel.onFormErrorShown() }
+    }
 
     LaunchedEffect(state.saveError) {
         state.saveError?.let {
@@ -73,11 +85,17 @@ fun CreateEntryScreen(
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia()
-    ) { uris -> viewModel.onPhotosPicked(uris.map { it.toString() }) }
+    ) { uris ->
+        uris.forEach { uri ->
+            try { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            catch (_: SecurityException) { /* shortcut: источник не сохраняет доступ; после перезапуска потребуется повторный выбор фото. */ }
+        }
+        viewModel.onPhotosPicked(uris.map { it.toString() })
+    }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { granted -> if (granted) viewModel.detectLocation() }
+    ) { granted -> if (granted) viewModel.detectLocation() else viewModel.onLocationPermissionDenied() }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -87,9 +105,9 @@ fun CreateEntryScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onCancel, enabled = !state.isSaving) { Icon(Icons.Default.ArrowBack, contentDescription = "Назад") }
+                IconButton(onClick = leave, enabled = !state.isSaving) { Icon(Icons.Default.ArrowBack, contentDescription = "Назад") }
                 Text(if (entryId == null) "Новая запись" else "Изменить запись", fontWeight = FontWeight.ExtraBold)
-                Button(onClick = { viewModel.save() }, enabled = !state.isSaving && !state.isLoading && !state.isDetectingLocation && state.loadError == null) {
+                Button(onClick = { viewModel.save() }, enabled = !state.isSaving && !state.isLoading && !state.isDetectingLocation && !state.isAddingTag && state.loadError == null) {
                     if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
                     else Text("Сохранить")
                 }
@@ -99,12 +117,15 @@ fun CreateEntryScreen(
         if (state.isLoading || state.isSaving || state.loadError != null) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 if (state.isLoading || state.isSaving) CircularProgressIndicator()
-                else Text(state.loadError!!, color = MaterialTheme.colorScheme.error)
+                else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(state.loadError!!, color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = viewModel::loadEntry) { Text("Повторить") }
+                }
             }
             return@Scaffold
         }
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState())
         ) {
             // Фотографии
             Text(
@@ -173,6 +194,7 @@ fun CreateEntryScreen(
                 onValueChange = viewModel::onTitleChanged,
                 placeholder = { Text("Название записи *") },
                 isError = state.titleError != null,
+                supportingText = { state.titleError?.let { Text(it) } },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 textStyle = MaterialTheme.typography.headlineSmall
             )
@@ -261,8 +283,9 @@ fun CreateEntryScreen(
                     modifier = Modifier.weight(1f),
                     singleLine = true
                 )
-                IconButton(onClick = { viewModel.addNewTag() }) {
-                    Icon(Icons.Default.Add, contentDescription = "Добавить тег")
+                IconButton(onClick = { viewModel.addNewTag() }, enabled = state.newTagName.isNotBlank() && !state.isAddingTag) {
+                    if (state.isAddingTag) CircularProgressIndicator(Modifier.size(18.dp))
+                    else Icon(Icons.Default.Add, contentDescription = "Добавить тег")
                 }
             }
 
@@ -287,8 +310,17 @@ fun CreateEntryScreen(
                 }
             }
 
-            var showLocationSearch by remember { mutableStateOf(false) }
-            var searchQuery by remember { mutableStateOf("") }
+            if (state.latitude != null || state.placeName != null) {
+                TextButton(onClick = viewModel::clearLocation, modifier = Modifier.padding(horizontal = 20.dp)) { Text("Убрать место") }
+            }
+            state.locationSearchError?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 20.dp))
+            }
+
+            var showLocationSearch by rememberSaveable { mutableStateOf(false) }
+            var searchQuery by rememberSaveable { mutableStateOf("") }
+            LaunchedEffect(state.locationFound) { if (state.locationFound) showLocationSearch = false }
+            val dismissSearch: () -> Unit = { viewModel.cancelLocationSearch(); showLocationSearch = false }
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -306,7 +338,8 @@ fun CreateEntryScreen(
                     Text("Автоматически")
                 }
                 OutlinedButton(
-                    onClick = { showLocationSearch = true },
+                    onClick = { viewModel.cancelLocationSearch(); showLocationSearch = true },
+                    enabled = !state.isDetectingLocation,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Ввести вручную")
@@ -315,7 +348,7 @@ fun CreateEntryScreen(
 
             if (showLocationSearch) {
                 AlertDialog(
-                    onDismissRequest = { showLocationSearch = false },
+                    onDismissRequest = dismissSearch,
                     title = { Text("Введите место") },
                     text = {
                         Column {
@@ -323,21 +356,22 @@ fun CreateEntryScreen(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
                                 placeholder = { Text("Например: Санторини, Греция") },
-                                singleLine = true
+                                singleLine = true,
+                                enabled = !state.isDetectingLocation
                             )
                             state.locationSearchError?.let {
                                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                             }
+                            if (state.isDetectingLocation) LinearProgressIndicator(Modifier.fillMaxWidth())
                         }
                     },
                     confirmButton = {
-                        TextButton(onClick = {
+                        TextButton(enabled = searchQuery.isNotBlank() && !state.isDetectingLocation, onClick = {
                             viewModel.searchLocationByName(searchQuery)
-                            showLocationSearch = false
                         }) { Text("Найти") }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showLocationSearch = false }) { Text("Отмена") }
+                        TextButton(onClick = dismissSearch) { Text("Отмена") }
                     }
                 )
             }

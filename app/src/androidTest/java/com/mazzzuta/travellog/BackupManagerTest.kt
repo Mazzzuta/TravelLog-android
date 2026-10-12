@@ -25,6 +25,7 @@ class BackupManagerTest {
     private lateinit var preferences: UserPreferencesRepository
     private lateinit var manager: BackupManager
     private lateinit var scope: CoroutineScope
+    private lateinit var storage: com.mazzzuta.travellog.utils.PhotoStorageHelper
 
     @Before fun setUp() = runBlocking {
         val target = InstrumentationRegistry.getInstrumentation().targetContext
@@ -37,7 +38,8 @@ class BackupManagerTest {
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val store = PreferenceDataStoreFactory.create(scope = scope) { File(root, "test.preferences_pb") }
         preferences = UserPreferencesRepository(context, store)
-        manager = BackupManager(context, database, preferences)
+        storage = com.mazzzuta.travellog.utils.PhotoStorageHelper(context)
+        manager = BackupManager(context, database, preferences, storage)
         database.backupDao().insertEntries(listOf(EntryEntity(id = 9, title = "До импорта", description = "", date = 1)))
     }
 
@@ -98,5 +100,35 @@ class BackupManagerTest {
             assertEquals(before, dao.entries())
             assertTrue(File(context.filesDir, "photos").listFiles().orEmpty().isEmpty())
         } finally { prepared.discard() }
+    }
+
+    @Test fun cleanupWaitsForPhotoCommitAndRemovesItOnlyAfterDeletion() = runBlocking {
+        val cleanup = com.mazzzuta.travellog.utils.PhotoCleanup(context, database, storage)
+        val copied = CompletableDeferred<Unit>()
+        val commit = CompletableDeferred<Unit>()
+        val photo = File(context.filesDir, "photos/pending.jpg")
+        val writer = launch {
+            storage.withPhotoAccess {
+                photo.parentFile!!.mkdirs()
+                photo.writeText("photo")
+                copied.complete(Unit)
+                commit.await()
+                database.backupDao().insertPhotos(listOf(PhotoEntity(id = 1, entryId = 9, filePath = photo.path)))
+            }
+        }
+        withTimeout(3000) { copied.await() }
+        val cleaning = async(start = CoroutineStart.UNDISPATCHED) { cleanup.clean() }
+        assertFalse(cleaning.isCompleted)
+        commit.complete(Unit)
+        writer.join()
+        assertEquals(0, withTimeout(3000) { cleaning.await() }.deleted)
+        assertTrue(photo.exists())
+        database.backupDao().insertTrips(listOf(TripEntity(id = 1, title = "Обложка", startDate = 1, coverPhotoPath = photo.path)))
+        database.backupDao().clearEntries()
+        assertEquals(0, cleanup.clean().deleted)
+        assertTrue(photo.exists())
+        database.backupDao().clearTrips()
+        assertEquals(1, cleanup.clean().deleted)
+        assertFalse(photo.exists())
     }
 }

@@ -1,7 +1,8 @@
 package com.mazzzuta.travellog.viewmodels
 
 import com.mazzzuta.travellog.database.UserPreferencesRepository
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.retryWhen
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mazzzuta.travellog.database.EntryRepository
@@ -56,9 +57,10 @@ class FeedViewModel(
     private val filters = MutableStateFlow(FeedUiState())
 
     init {
-        // стартовая сортировка берётся из настроек
         viewModelScope.launch {
-            filters.update { it.copy(sortOption = SortOption.fromSql(prefsRepository.preferencesFlow.first().defaultSort)) }
+            prefsRepository.preferencesFlow.map { it.defaultSort }.distinctUntilChanged()
+                .retryWhen { _, _ -> kotlinx.coroutines.delay(2000); true }
+                .collect { sort -> filters.update { it.copy(sortOption = SortOption.fromSql(sort)) } }
         }
     }
 
