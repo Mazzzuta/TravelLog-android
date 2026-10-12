@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.background
 import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -43,7 +44,7 @@ class MainActivity : ComponentActivity() {
 
             CompositionLocalProvider(LocalDateFormat provides DateFormatOption.fromId(current.dateFormat)) {
                 TravelLogTheme(palette = palette) {
-                    Column(Modifier.fillMaxSize()) {
+                    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                         if (readError) {
                             Text("Не удалось загрузить оформление и формат даты", color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = { retry++ }) { Text("Повторить") }

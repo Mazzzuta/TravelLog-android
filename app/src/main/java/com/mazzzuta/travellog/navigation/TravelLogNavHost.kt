@@ -1,10 +1,19 @@
 package com.mazzzuta.travellog.navigation
 
+import android.os.SystemClock
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -30,6 +39,7 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
 
     val bottomTabRoutes = remember { BottomTab.entries.map { it.route::class.qualifiedName } }
     val showBottomBar = currentRoute in bottomTabRoutes
+    var lastNavigationAt by remember { mutableLongStateOf(0L) }
 
     Scaffold(
         bottomBar = {
@@ -37,13 +47,23 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
                 TravelBottomNav(
                     currentRoute = currentRoute,
                     onTabSelected = { route ->
-                        navController.navigate(route) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                        val now = SystemClock.uptimeMillis()
+                        if (now - lastNavigationAt >= 250 && currentRoute != route::class.qualifiedName) {
+                            lastNavigationAt = now
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     },
-                    onCreateClick = { navController.navigate(Route.CreateEntry) }
+                    onCreateClick = {
+                        val now = SystemClock.uptimeMillis()
+                        if (now - lastNavigationAt >= 250) {
+                            lastNavigationAt = now
+                            navController.navigate(Route.CreateEntry)
+                        }
+                    }
                 )
             }
         }
@@ -51,7 +71,11 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
         NavHost(
             navController = navController,
             startDestination = Route.Feed,
-            modifier = Modifier.statusBarsPadding()
+            enterTransition = { slideInHorizontally(tween(180)) { it } },
+            exitTransition = { slideOutHorizontally(tween(180)) { -it } },
+            popEnterTransition = { slideInHorizontally(tween(180)) { -it } },
+            popExitTransition = { slideOutHorizontally(tween(180)) { it } },
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()
                 .padding(bottom = if (showBottomBar) padding.calculateBottomPadding() else 0.dp)
         ) {
             composable<Route.Feed> {

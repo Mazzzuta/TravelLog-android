@@ -3,6 +3,10 @@ package com.mazzzuta.travellog.ui.components
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -25,7 +29,14 @@ fun TravelBottomNav(
             NavigationBarItem(
                 selected = currentRoute == tab.route::class.qualifiedName,
                 onClick = { onTabSelected(tab.route) },
-                icon = { Text(tab.label.first().toString()) },
+                icon = {
+                    Icon(when (tab) {
+                        BottomTab.FEED -> Icons.Default.Article
+                        BottomTab.MAP -> Icons.Default.Map
+                        BottomTab.STATISTICS -> Icons.Default.BarChart
+                        BottomTab.SETTINGS -> Icons.Default.Settings
+                    }, contentDescription = null)
+                },
                 label = { Text(tab.label) }
             )
             if (index == 1) {

@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +29,7 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import com.mazzzuta.travellog.viewmodels.MapViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -46,16 +48,16 @@ fun MapScreen(
     val context = LocalContext.current
     val mapView = remember(context) {
         MapLibre.getInstance(context)
-        MapView(context).apply { onCreate(null) }
+        MapView(context, MapLibreMapOptions.createFromAttributes(context).textureMode(true)).apply { onCreate(null) }
     }
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var mapError by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var cameraInitialized by remember { mutableStateOf(false) }
-    val focusEntry = state.entries.firstOrNull { it.entry.id == focusEntryId }
-    val groups = state.entries.groupBy { it.entry.latitude!! to it.entry.longitude!! }
-    val positions = groups.keys.toList()
+    val focusEntry = remember(state.entries, focusEntryId) { state.entries.firstOrNull { it.entry.id == focusEntryId } }
+    val groups = remember(state.entries) { state.entries.groupBy { it.entry.latitude!! to it.entry.longitude!! } }
+    val positions = remember(groups) { groups.keys.toList() }
     val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
         if (grants.values.any { it }) viewModel.locate() else viewModel.showPermissionError()
     }
@@ -110,7 +112,7 @@ fun MapScreen(
     LaunchedEffect(loaded, state.location) {
         state.location?.let { if (loaded) map?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.first, it.second), 14.0)) }
     }
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         AndroidView(modifier = Modifier.fillMaxSize(), factory = {
             mapView.apply { getMapAsync { currentMap ->
                 map = currentMap
