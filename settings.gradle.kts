@@ -17,7 +17,9 @@ plugins {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        google()
+        google {
+            content { excludeGroup("com.patrykandpatrick.vico") }
+        }
         mavenCentral()
     }
 }

@@ -1,6 +1,7 @@
 package com.mazzzuta.travellog.database
 
 import android.content.Context
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -8,12 +9,14 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
 
 private val Context.dataStore by preferencesDataStore(name = "user_prefs")
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
 
 /** Все пользовательские настройки приложения. */
+@Serializable
 data class UserPrefs(
     val nickname: String = "Путешественник",
     val registeredAt: Long = 0L,
@@ -27,7 +30,7 @@ data class UserPrefs(
 )
 
 /** Хранит настройки пользователя в DataStore (не в Room: это не записи дневника). */
-class UserPreferencesRepository(private val context: Context) {
+class UserPreferencesRepository(context: Context, private val store: DataStore<Preferences> = context.dataStore) {
 
     private object Keys {
         val NICKNAME = stringPreferencesKey("nickname")
@@ -40,7 +43,7 @@ class UserPreferencesRepository(private val context: Context) {
         val DATE_FORMAT = stringPreferencesKey("date_format")
     }
 
-    val preferencesFlow: Flow<UserPrefs> = context.dataStore.data.map { it.toUserPrefs() }
+    val preferencesFlow: Flow<UserPrefs> = store.data.map { it.toUserPrefs() }
 
     private fun Preferences.toUserPrefs(): UserPrefs {
         val defaults = UserPrefs()
@@ -58,15 +61,26 @@ class UserPreferencesRepository(private val context: Context) {
 
     /** Фиксирует дату первого запуска («регистрации»), только если её ещё нет. */
     suspend fun ensureRegisteredAt() {
-        context.dataStore.edit { if (it[Keys.REGISTERED_AT] == null) it[Keys.REGISTERED_AT] = System.currentTimeMillis() }
+        store.edit { if (it[Keys.REGISTERED_AT] == null) it[Keys.REGISTERED_AT] = System.currentTimeMillis() }
     }
 
-    suspend fun setNickname(name: String) = context.dataStore.edit { it[Keys.NICKNAME] = name }
-    suspend fun setThemeMode(mode: ThemeMode) = context.dataStore.edit {
+    suspend fun setNickname(name: String) = store.edit { it[Keys.NICKNAME] = name }
+    suspend fun setThemeMode(mode: ThemeMode) = store.edit {
         it[Keys.THEME_MODE] = mode.name
         it[Keys.SCHEME] = "default"
     }
-    suspend fun setScheme(id: String) = context.dataStore.edit { it[Keys.SCHEME] = id }
-    suspend fun setDefaultSort(sort: String) = context.dataStore.edit { it[Keys.DEFAULT_SORT] = sort }
-    suspend fun setDateFormat(format: String) = context.dataStore.edit { it[Keys.DATE_FORMAT] = format }
+    suspend fun setScheme(id: String) = store.edit { it[Keys.SCHEME] = id }
+    suspend fun setDefaultSort(sort: String) = store.edit { it[Keys.DEFAULT_SORT] = sort }
+    suspend fun setDateFormat(format: String) = store.edit { it[Keys.DATE_FORMAT] = format }
+
+    suspend fun restore(prefs: UserPrefs) = store.edit {
+        it[Keys.NICKNAME] = prefs.nickname
+        it[Keys.REGISTERED_AT] = prefs.registeredAt
+        it[Keys.THEME_MODE] = prefs.themeMode.name
+        if (prefs.schemeId == null) it.remove(Keys.SCHEME) else it[Keys.SCHEME] = prefs.schemeId
+        it[Keys.LIGHT_SCHEME] = prefs.lightSchemeId
+        it[Keys.DARK_SCHEME] = prefs.darkSchemeId
+        it[Keys.DEFAULT_SORT] = prefs.defaultSort
+        it[Keys.DATE_FORMAT] = prefs.dateFormat
+    }
 }

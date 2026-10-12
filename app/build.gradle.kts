@@ -67,6 +67,7 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
 
     implementation("org.maplibre.gl:android-sdk:11.8.0")
+    implementation("com.patrykandpatrick.vico:compose-m3:2.1.3")
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
     implementation("io.insert-koin:koin-androidx-compose:4.0.2")

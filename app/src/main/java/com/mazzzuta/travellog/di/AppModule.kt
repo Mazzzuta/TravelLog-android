@@ -20,6 +20,9 @@ import com.mazzzuta.travellog.viewmodels.EntryDetailViewModel
 import com.mazzzuta.travellog.database.UserPreferencesRepository
 import com.mazzzuta.travellog.viewmodels.SettingsViewModel
 import com.mazzzuta.travellog.viewmodels.TripsViewModel
+import com.mazzzuta.travellog.viewmodels.StatisticsViewModel
+import com.mazzzuta.travellog.viewmodels.BackupViewModel
+import com.mazzzuta.travellog.backup.BackupManager
 
 val appModule = module {
 
@@ -40,16 +43,19 @@ val appModule = module {
     single { TripRepository(get()) }
 
     viewModel { FeedViewModel(get(), get(), get()) }
-    viewModel { (entryId: Long) -> EntryDetailViewModel(entryId, get()) }
+    viewModel { (entryId: Long) -> EntryDetailViewModel(entryId, get(), get()) }
 
     single { GeocoderHelper(androidContext()) }
     single { LocationHelper(androidContext()) }
     single { PhotoStorageHelper(androidContext()) }
 
     single { UserPreferencesRepository(androidContext()) }
+    single { BackupManager(androidContext(), get(), get()) }
+    viewModel { BackupViewModel(get()) }
     viewModel { SettingsViewModel(get()) }
     viewModel { TripsViewModel(get(), get()) }
     viewModel { MapViewModel(get(), get()) }
+    viewModel { StatisticsViewModel(get(), get()) }
 
     viewModel { parameters -> CreateEntryViewModel(get(), get(), get(), get(), get(), parameters.getOrNull<Long>()) }
 }
