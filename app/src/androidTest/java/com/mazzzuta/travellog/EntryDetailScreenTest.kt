@@ -36,7 +36,7 @@ class EntryDetailScreenTest {
 
     private fun open(id: Long, onMapClick: () -> Unit = {}) {
         compose.runOnIdle {
-            viewModel = EntryDetailViewModel(id, repository, TripRepository(database.tripDao()))
+            viewModel = EntryDetailViewModel(id, repository, TripRepository(database.tripDao(), database))
             store.put("detail", viewModel)
         }
         compose.setContent { EntryDetailScreen(id, onBack = {}, onEdit = {}, onMapClick = onMapClick, viewModel = viewModel) }

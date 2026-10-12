@@ -83,8 +83,8 @@ class EntryRepositoryTest {
     @Test
     fun deletingTripCascadesOnlyItsEntriesPhotosAndTagLinks() = runBlocking {
         val before = repository.getEntryWithDetails(entryId).first()!!
-        val trips = TripRepository(database.tripDao())
-        val otherTripId = trips.createTrip(TripEntity(title = "Оставить", startDate = 1000L))
+        val trips = TripRepository(database.tripDao(), database)
+        val otherTripId = database.tripDao().insert(TripEntity(title = "Оставить", startDate = 1000L))
         val otherEntryId = repository.createEntry(before.entry.copy(id = 0L, tripId = otherTripId), listOf("keep.jpg"), listOf(tagId))
         val trip = trips.getAllTrips().first().first { it.id == before.entry.tripId }
 
@@ -122,9 +122,9 @@ class EntryRepositoryTest {
     @Test
     fun deletingOnlyTripKeepsEntriesWithPhotosAndTags() = runBlocking {
         val before = repository.getEntryWithDetails(entryId).first()!!
-        val trips = TripRepository(database.tripDao())
+        val trips = TripRepository(database.tripDao(), database)
         val trip = trips.getAllTrips().first().single()
-        val otherTripId = trips.createTrip(TripEntity(title = "Другая поездка", startDate = 1000L))
+        val otherTripId = database.tripDao().insert(TripEntity(title = "Другая поездка", startDate = 1000L))
         val otherEntryId = repository.createEntry(before.entry.copy(id = 0L, tripId = otherTripId), emptyList(), emptyList())
 
         trips.deleteTrip(trip)

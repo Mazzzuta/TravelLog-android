@@ -101,6 +101,7 @@ object BackupArchive {
         }
         val result = requireNotNull(data) { "В архиве нет data.json" }
         result.validate(seen - "data.json")
+        validateBackupTripDates(result.trips, result.entries)
         return result
     }
 }

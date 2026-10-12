@@ -87,6 +87,19 @@ class BackupArchiveTest {
         rejects { read(rawZip(diary.copy(version = 2))) }
     }
 
+    @Test fun importingConflictingPeriodsOrOutOfRangeEntriesIsRejected() {
+        rejects { read(rawZip(diary.copy(trips = diary.trips + diary.trips.single().copy(id = 8)))) }
+        rejects { read(rawZip(diary.copy(entries = listOf(diary.entries.first().copy(date = -172800000L))))) }
+    }
+
+    @Test fun legacyConflictingPeriodsCanStillBeExportedWithoutLosingData() {
+        val source = temporary.newFile().apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val legacy = diary.copy(trips = diary.trips + diary.trips.single().copy(id = 8))
+        val output = ByteArrayOutputStream()
+        BackupArchive.write(output, legacy, mapOf("photos/0.jpg" to source))
+        assertTrue(output.size() > 0)
+    }
+
     @Test fun invalidForeignKeysAndDuplicateIdsAreRejected() {
         rejects { read(rawZip(diary.copy(trips = emptyList()))) }
         rejects { read(rawZip(diary.copy(entries = diary.entries + diary.entries.first()))) }

@@ -23,8 +23,9 @@ class EntryRepository(
     fun getEntryWithDetails(entryId: Long): Flow<EntryWithDetails?> =
         entryDao.getEntryWithDetails(entryId)
 
-    suspend fun createEntry(entry: EntryEntity, photoPaths: List<String>, tagIds: List<Long>): Long = database.withTransaction {
-        val entryId = entryDao.insert(entry)
+    suspend fun createEntry(entry: EntryEntity, photoPaths: List<String>, tagIds: List<Long>, autoAssignTrip: Boolean = false): Long = database.withTransaction {
+        val resolved = resolveEntryTrip(entry, database.tripDao().getAllTrips().first(), autoAssignTrip)
+        val entryId = entryDao.insert(resolved)
         if (photoPaths.isNotEmpty()) {
             photoDao.insertAll(photoPaths.mapIndexed { index, path ->
                 PhotoEntity(entryId = entryId, filePath = path, orderIndex = index)
@@ -36,10 +37,11 @@ class EntryRepository(
         entryId
     }
 
-    suspend fun updateEntry(entry: EntryEntity, photoPaths: List<String>, tagIds: List<Long>) {
+    suspend fun updateEntry(entry: EntryEntity, photoPaths: List<String>, tagIds: List<Long>, autoAssignTrip: Boolean = false) {
         database.withTransaction {
             check(entryDao.getEntryWithDetails(entry.id).first() != null) { "Запись уже удалена" }
-            entryDao.update(entry)
+            val resolved = resolveEntryTrip(entry, database.tripDao().getAllTrips().first(), autoAssignTrip)
+            entryDao.update(resolved)
             photoDao.deleteForEntry(entry.id)
             photoDao.insertAll(photoPaths.mapIndexed { index, path ->
                 PhotoEntity(entryId = entry.id, filePath = path, orderIndex = index)
