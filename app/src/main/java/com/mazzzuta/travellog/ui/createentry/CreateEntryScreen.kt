@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -109,8 +110,10 @@ fun CreateEntryScreen(
                 IconButton(onClick = leave, enabled = !state.isSaving) { Icon(Icons.Default.ArrowBack, contentDescription = "Назад") }
                 Text(if (entryId == null) "Новая запись" else "Изменить запись", fontWeight = FontWeight.ExtraBold)
                 Button(onClick = { viewModel.save() }, enabled = !state.isSaving && !state.isLoading && !state.isDetectingLocation && !state.isAddingTag && state.loadError == null) {
-                    if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    else Text("Сохранить")
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("Сохранить", modifier = Modifier.alpha(if (state.isSaving) 0f else 1f))
+                        if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    }
                 }
             }
         }

@@ -50,14 +50,9 @@ fun FeedScreen(
     val dateTo = state.dateTo
     val hasFilters = state.tripId != null || state.onlyWithoutTrip || state.dateFrom != null || state.query.isNotBlank()
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
 
         Column(modifier = Modifier.padding(horizontal = 20.dp).padding(top = 16.dp, bottom = 12.dp)) {
-            Text(
-                text = "TRAVEL LOG",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
             Text(
                 text = "Мои записи",
                 style = MaterialTheme.typography.headlineSmall,
@@ -208,7 +203,12 @@ private fun EntryCard(entryWithDetails: EntryWithDetails, onClick: () -> Unit) {
                 if (entryWithDetails.tags.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         entryWithDetails.tags.forEach { tag ->
-                            AssistChip(onClick = {}, label = { Text(tag.name, style = MaterialTheme.typography.labelSmall) })
+                            Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                shape = RoundedCornerShape(8.dp)) {
+                                Text(tag.name, style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
+                            }
                         }
                     }
                     Spacer(Modifier.height(6.dp))

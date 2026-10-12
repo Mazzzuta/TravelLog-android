@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -188,7 +189,12 @@ private fun TripEditor(trip: TripEntity, isSaving: Boolean, error: String?, onDi
             TextButton(enabled = !isSaving, onClick = {
                 attempted = true
                 if (!invalidTitle && !invalidDates) onSave(trip.copy(title = title.trim(), startDate = start, endDate = end))
-            }) { if (isSaving) CircularProgressIndicator(Modifier.size(20.dp)) else Text("Сохранить") }
+            }) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("Сохранить", modifier = Modifier.alpha(if (isSaving) 0f else 1f))
+                    if (isSaving) CircularProgressIndicator(Modifier.size(20.dp))
+                }
+            }
         },
         dismissButton = { TextButton(onClick = onDismiss, enabled = !isSaving) { Text("Отмена") } },
     )
