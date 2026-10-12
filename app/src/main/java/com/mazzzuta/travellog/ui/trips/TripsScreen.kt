@@ -88,7 +88,7 @@ fun TripsScreen(onBack: () -> Unit, onEntryClick: (Long) -> Unit, viewModel: Tri
                             }
                             if (expandedId == trip.id) {
                                 if (entries.isEmpty()) Text(
-                                    "В этой поездке пока нет записей. При добавлении или редактировании записи выберите эту поездку.",
+                                    "В этой поездке пока нет записей. Укажите дату в её периоде и выберите «Автоопределение» при создании или редактировании записи.",
                                     Modifier.padding(16.dp),
                                 )
                                 entries.forEach { entry ->

@@ -43,7 +43,7 @@ class BackupManagerTest {
         database.backupDao().insertEntries(listOf(EntryEntity(id = 9, title = "До импорта", description = "", date = 1)))
     }
 
-    @After fun tearDown() = runBlocking {
+    @After fun tearDown(): Unit = runBlocking {
         scope.coroutineContext[Job]!!.cancelAndJoin()
         database.close()
         root.deleteRecursively()

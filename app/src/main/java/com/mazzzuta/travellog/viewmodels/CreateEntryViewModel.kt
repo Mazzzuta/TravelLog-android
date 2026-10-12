@@ -23,13 +23,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
 
 data class CreateEntryUiState(
     val date: Long = System.currentTimeMillis(),
     val availableTrips: List<TripEntity> = emptyList(),
-    val tripId: Long? = null,
+    val autoAssignTrip: Boolean = true,
     val title: String = "",
     val description: String = "",
     val photoUris: List<String> = emptyList(),
@@ -74,7 +72,7 @@ class CreateEntryViewModel(
 
     private fun restoreDraft(state: CreateEntryUiState): CreateEntryUiState =
         savedStateHandle.get<String>("draft")?.let { encoded ->
-            runCatching { Json.decodeFromString<EntryDraft>(encoded).applyTo(state) }.getOrNull()
+            runCatching { decodeEntryDraft(encoded).applyTo(state) }.getOrNull()
         } ?: state
 
     private fun edit(change: (CreateEntryUiState) -> CreateEntryUiState) {
@@ -124,7 +122,7 @@ class CreateEntryViewModel(
                         title = details.entry.title,
                         description = details.entry.description,
                         date = details.entry.date,
-                        tripId = details.entry.tripId,
+                        autoAssignTrip = details.entry.tripId != null,
                         photoUris = details.photos.sortedWith(compareBy({ photo -> photo.orderIndex }, { photo -> photo.id })).map { photo -> photo.filePath },
                         selectedTagIds = details.tags.map { tag -> tag.id }.toSet(),
                         latitude = details.entry.latitude,
@@ -153,8 +151,8 @@ class CreateEntryViewModel(
         edit { it.copy(date = date) }
     }
 
-    fun onTripSelected(tripId: Long?) {
-        edit { it.copy(tripId = tripId) }
+    fun onTripAssignmentChanged(autoAssign: Boolean) {
+        edit { it.copy(autoAssignTrip = autoAssign) }
     }
 
     fun onPhotosPicked(uris: List<String>) {
@@ -256,20 +254,19 @@ class CreateEntryViewModel(
                         else photoStorageHelper.saveToInternalStorage(uri).also { copiedPaths.add(it) }
                     }
                     val original = originalEntry
-                    val tripId = state.tripId
                     val entry = (original ?: EntryEntity(
-                        tripId = tripId,
+                        tripId = null,
                         title = "", description = "", date = state.date,
                     )).copy(
                         title = state.title.trim(), description = state.description.trim(),
                         date = state.date,
-                        tripId = tripId,
+                        tripId = null,
                         latitude = state.latitude, longitude = state.longitude,
                         placeName = state.placeName, updatedAt = System.currentTimeMillis(),
                     )
                     withContext(NonCancellable) {
-                        if (original == null) repository.createEntry(entry, savedPaths, state.selectedTagIds.toList())
-                        else repository.updateEntry(entry, savedPaths, state.selectedTagIds.toList())
+                        if (original == null) repository.createEntry(entry, savedPaths, state.selectedTagIds.toList(), state.autoAssignTrip)
+                        else repository.updateEntry(entry, savedPaths, state.selectedTagIds.toList(), state.autoAssignTrip)
                         committed = true
                     }
                     withContext(NonCancellable + kotlinx.coroutines.Dispatchers.Main) {
@@ -281,7 +278,9 @@ class CreateEntryViewModel(
                     throw e
                 } catch (e: Exception) {
                     if (!committed) copiedPaths.forEach { File(it).delete() }
-                    _uiState.update { it.copy(isSaving = false, saveError = "Не удалось сохранить запись. Попробуйте ещё раз") }
+                    _uiState.update { it.copy(isSaving = false, saveError =
+                        if (e is IllegalArgumentException) e.message ?: "Проверьте дату записи и поездку"
+                        else "Не удалось сохранить запись. Попробуйте ещё раз") }
                 }
             }
         }

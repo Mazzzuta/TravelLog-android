@@ -41,7 +41,7 @@ val appModule = module {
     single { get<AppDatabase>().tagDao() }
 
     single { EntryRepository(get(), get(), get(), get()) }
-    single { TripRepository(get()) }
+    single { TripRepository(get(), get()) }
 
     viewModel { FeedViewModel(get(), get(), get()) }
     viewModel { (entryId: Long) -> EntryDetailViewModel(entryId, get(), get()) }
