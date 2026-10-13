@@ -34,6 +34,7 @@ class TravelLogApp : Application() {
             catch (e: Exception) { Log.w("TravelLog", "Не удалось сохранить дату первого запуска", e) }
         }
         scope.launch {
+            // Удаление записи меняет photos через CASCADE; изменение обложки поездки тоже может освободить файл.
             database.invalidationTracker.createFlow("photos", "trips")
                 .retryWhen { error, _ -> Log.w("TravelLog", "Не удалось прочитать ссылки фотографий", error); kotlinx.coroutines.delay(5000); true }
                 .collect {

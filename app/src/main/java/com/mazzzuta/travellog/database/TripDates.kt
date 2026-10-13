@@ -39,6 +39,7 @@ internal fun resolveEntryTrip(entry: EntryEntity, trips: List<TripEntity>, autoA
 
 internal fun validateBackupTripDates(trips: List<TripEntity>, entries: List<EntryEntity>) {
     val sorted = trips.sortedBy { it.startDate }
+    // После сортировки достаточно проверить соседние периоды: любое пересечение проявится между ними.
     sorted.zipWithNext().forEach { (first, second) ->
         require(!first.overlaps(second)) { "В архиве пересекаются поездки «${first.title}» и «${second.title}»" }
     }

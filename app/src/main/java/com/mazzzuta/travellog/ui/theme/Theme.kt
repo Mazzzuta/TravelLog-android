@@ -11,10 +11,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-/** Применяет выбранную палитру ко всему приложению через Material 3 ColorScheme. */
 @Composable
 fun TravelLogTheme(palette: AppPalette, content: @Composable () -> Unit) {
-    // на светлом цвете ошибки (например, у «Ягод») текст поверх неё должен быть тёмным
+    // На светлом фоне ошибки белый текст теряется, поэтому берём тёмный цвет из палитры.
     val onError = if (palette.danger.luminance() > 0.4f) palette.bg else Color.White
     val base = if (palette.isDark) darkColorScheme() else lightColorScheme()
 
@@ -47,7 +46,7 @@ fun TravelLogTheme(palette: AppPalette, content: @Composable () -> Unit) {
         onErrorContainer = palette.danger,
     )
 
-    // иконки статус-бара должны контрастировать с фоном выбранной темы, а не системной
+    // Системные значки подстраиваем под палитру приложения: она может отличаться от темы Android.
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

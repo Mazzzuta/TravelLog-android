@@ -82,6 +82,7 @@ class CreateEntryViewModel(
             next.copy(hasChanges = it.hasChanges || next.draft() != it.draft())
         }
         if (_uiState.value.hasChanges) {
+            // В SavedState кладём только поля формы; загрузку, ошибки и выполняющиеся операции не восстанавливаем.
             val encoded = _uiState.value.draft().encodeForSavedState()
             if (encoded != null) savedStateHandle["draft"] = encoded
             else {
@@ -118,6 +119,7 @@ class CreateEntryViewModel(
                 originalEntry = details.entry
                 originalPhotoPaths = details.photos.map { it.filePath }.toSet()
                 _uiState.update {
+                    // Данные БД нужны как основа, но несохранённый ввод после пересоздания экрана имеет приоритет.
                     restoreDraft(it.copy(
                         title = details.entry.title,
                         description = details.entry.description,
@@ -215,6 +217,7 @@ class CreateEntryViewModel(
                 else edit { it.copy(latitude = result.first, longitude = result.second, placeName = result.third, locationFound = true) }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { _uiState.update { it.copy(locationSearchError = "Ошибка поиска места. Попробуйте ещё раз") } }
+            // Отменённый поиск может завершиться позже нового; его finally не должен снимать новый индикатор.
             finally { if (version == locationVersion) _uiState.update { it.copy(isDetectingLocation = false) } }
         }
     }
@@ -236,6 +239,7 @@ class CreateEntryViewModel(
 
     fun onFormErrorShown() { _uiState.update { it.copy(formError = null) } }
 
+    // Сначала копируем новые фото, затем сохраняем запись. При сбое удаляем только копии этой попытки.
     fun save() {
         val state = _uiState.value
         if (state.isLoading || state.loadError != null || state.isSaving || state.isSaved || state.isDetectingLocation || state.isAddingTag) return
@@ -264,6 +268,7 @@ class CreateEntryViewModel(
                         latitude = state.latitude, longitude = state.longitude,
                         placeName = state.placeName, updatedAt = System.currentTimeMillis(),
                     )
+                    // Нельзя отменить корутину между коммитом БД и committed: иначе обработчик удалит уже используемые фото.
                     withContext(NonCancellable) {
                         if (original == null) repository.createEntry(entry, savedPaths, state.selectedTagIds.toList(), state.autoAssignTrip)
                         else repository.updateEntry(entry, savedPaths, state.selectedTagIds.toList(), state.autoAssignTrip)

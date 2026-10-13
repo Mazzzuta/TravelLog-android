@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
                             TextButton(onClick = { retry++ }) { Text("Повторить") }
                         }
                         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            // Ждём первого чтения настроек, чтобы при запуске не мелькали чужая палитра и формат даты.
                             if (prefs != null) TravelLogNavHost()
                             else if (!readError) CircularProgressIndicator()
                         }

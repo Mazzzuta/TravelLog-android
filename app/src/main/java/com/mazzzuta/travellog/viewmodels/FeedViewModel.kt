@@ -65,7 +65,6 @@ class FeedViewModel(
     }
 
     val uiState: StateFlow<FeedUiState> = combine(filters, tripRepository.getAllTrips()) { filter, trips ->
-        // Удалённая поездка больше не должна оставлять ленту с невидимым фильтром.
         filter.copy(trips = trips, tripId = filter.tripId?.takeIf { id -> trips.any { it.id == id } })
     }.flatMapLatest { filter ->
         repository.searchEntries(query = filter.query, tripId = filter.tripId,
