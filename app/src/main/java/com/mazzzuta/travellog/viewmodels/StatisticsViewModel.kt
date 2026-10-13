@@ -27,13 +27,14 @@ data class TravelStatistics(
     val tags: List<TagCount>,
 )
 
-// Группируем по локальной дате дневника, а не по UTC из SQL strftime.
+// Группируем по локальной дате дневника, а не по UTC из SQL strftime
 internal fun calculateStatistics(entries: List<EntryWithDetails>, tripCount: Int, zone: ZoneId): TravelStatistics {
     val dates = entries.map { Instant.ofEpochMilli(it.entry.date).atZone(zone) }
     val months = dates.groupBy { it.year }.mapValues { (_, datesInYear) ->
         val counts = datesInYear.groupingBy { it.monthValue }.eachCount()
         (1..12).map { counts[it] ?: 0 }
     }
+    // Для каждого тега считаем записи с ним
     val tags = entries.flatMap { it.tags.distinctBy { tag -> tag.id } }
         .groupBy { it.id }.values.map { TagCount(it.first().name, it.size) }
         .sortedWith(compareByDescending<TagCount> { it.count }.thenBy { it.tagName })

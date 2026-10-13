@@ -24,6 +24,7 @@ class EntryRepository(
     fun getEntryWithDetails(entryId: Long): Flow<EntryWithDetails?> =
         entryDao.getEntryWithDetails(entryId)
 
+    // Проверяем поездку и сохраняем запись с фото и тегами в одной транзакции.
     suspend fun createEntry(entry: EntryEntity, photoPaths: List<String>, tagIds: List<Long>, autoAssignTrip: Boolean = false): Long = database.withTransaction {
         require(!isFutureDate(entry.date)) { "Дата записи не может быть позже сегодняшнего дня" }
         val resolved = resolveEntryTrip(entry, database.tripDao().getAllTrips().first(), autoAssignTrip)
@@ -64,6 +65,7 @@ class EntryRepository(
     suspend fun createTag(name: String): Long = database.withTransaction {
         val trimmed = name.trim()
         require(trimmed.isNotEmpty()) { "Введите название тега" }
+        // «Лес» и « лес » считаем одним тегом.
         tagDao.getAllTags().first().firstOrNull { it.name.trim().equals(trimmed, ignoreCase = true) }?.id
             ?: tagDao.insert(TagEntity(name = trimmed))
     }

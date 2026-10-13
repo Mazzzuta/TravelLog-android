@@ -7,6 +7,7 @@ import androidx.room.withTransaction
 class TripRepository(private val tripDao: TripDao, private val database: AppDatabase) {
     fun getAllTrips(): Flow<List<TripEntity>> = tripDao.getAllTrips()
     fun getTripWithEntries(tripId: Long): Flow<TripWithEntries> = tripDao.getTripWithEntries(tripId)
+    // Без общей транзакции две одновременные проверки могли бы пропустить пересекающиеся поездки.
     suspend fun createTrip(trip: TripEntity): Long = database.withTransaction {
         validateTripChange(trip, tripDao.getAllTrips().first())
         tripDao.insert(trip.copy(title = trip.title.trim()))

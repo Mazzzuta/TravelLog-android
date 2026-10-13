@@ -12,6 +12,7 @@ class PhotoCleanup(context: Context, private val database: AppDatabase, private 
     private val root = File(context.filesDir, "photos")
 
     suspend fun clean(): PhotoCleanupResult = storage.withPhotoAccess {
+        // Общая блокировка не даёт удалить только что скопированное фото, которое ещё не успели привязать к записи.
         database.withTransaction {
             val dao = database.backupDao()
             val referenced = dao.photos().map { it.filePath } + dao.trips().mapNotNull { it.coverPhotoPath }
@@ -28,6 +29,7 @@ internal fun removeUnusedPhotos(root: File, referenced: Set<String>): PhotoClean
     var deleted = 0
     var bytes = 0L
     var failed = 0
+    // Не переходим по символическим ссылкам и не удаляем ничего за пределами собственного каталога photos.
     root.walkTopDown().onEnter { !Files.isSymbolicLink(it.toPath()) }
         .onFail { _, error -> throw error }.forEach { file ->
             if (file.isFile && !Files.isSymbolicLink(file.toPath()) && file.canonicalFile.toPath().startsWith(directory) &&

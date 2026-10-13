@@ -26,7 +26,6 @@ import org.koin.core.parameter.parametersOf
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
@@ -111,6 +110,7 @@ fun CreateEntryScreen(
                 Text(if (entryId == null) "Новая запись" else "Изменить запись", fontWeight = FontWeight.ExtraBold)
                 Button(onClick = { viewModel.save() }, enabled = !state.isSaving && !state.isLoading && !state.isDetectingLocation && !state.isAddingTag && state.loadError == null) {
                     Box(contentAlignment = Alignment.Center) {
+                        // Прозрачный текст удерживает ширину кнопки, пока поверх него показывается индикатор.
                         Text("Сохранить", modifier = Modifier.alpha(if (state.isSaving) 0f else 1f))
                         if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
                     }
@@ -131,7 +131,6 @@ fun CreateEntryScreen(
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState())
         ) {
-            // Фотографии
             Text(
                 "ФОТОГРАФИИ",
                 style = MaterialTheme.typography.labelSmall,
@@ -192,7 +191,6 @@ fun CreateEntryScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // Название с валидацией
             OutlinedTextField(
                 value = state.title,
                 onValueChange = viewModel::onTitleChanged,
@@ -205,7 +203,6 @@ fun CreateEntryScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Описание
             OutlinedTextField(
                 value = state.description,
                 onValueChange = viewModel::onDescriptionChanged,
@@ -258,7 +255,6 @@ fun CreateEntryScreen(
             }
             Spacer(Modifier.height(20.dp))
 
-            // Привязка к поездке
             var tripMenuExpanded by remember { mutableStateOf(false) }
             Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                 OutlinedButton(onClick = { tripMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
@@ -314,7 +310,6 @@ fun CreateEntryScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Локация
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -28,7 +28,6 @@ abstract class AppDatabase : RoomDatabase() {
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        // DROP родительской таблицы каскадно удаляет фото и связи: сохраняем их до перестройки.
         db.execSQL("CREATE TEMP TABLE migration_photos AS SELECT * FROM photos")
         db.execSQL("CREATE TEMP TABLE migration_entry_tags AS SELECT * FROM entry_tag_cross_ref")
         db.execSQL("""
@@ -64,7 +63,6 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
                 FOREIGN KEY(tripId) REFERENCES trips(id) ON UPDATE NO ACTION ON DELETE CASCADE
             )
         """.trimIndent())
-        // Старое значение 0,0 без названия места означало отсутствие геолокации.
         db.execSQL("""
             INSERT INTO entries_new
             SELECT id, tripId, title, description, date,

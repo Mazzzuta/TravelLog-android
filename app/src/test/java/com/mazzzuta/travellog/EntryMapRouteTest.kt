@@ -3,7 +3,6 @@ package com.mazzzuta.travellog
 import com.mazzzuta.travellog.navigation.Route
 import com.mazzzuta.travellog.navigation.hasBottomNav
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test

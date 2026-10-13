@@ -75,7 +75,6 @@ fun EntryDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
 
-        // Галерея фото
         Box(modifier = Modifier.fillMaxWidth().height(300.dp)) {
             if (photos.isNotEmpty()) {
                 val pagerState = rememberPagerState(pageCount = { photos.size })
@@ -97,6 +96,7 @@ fun EntryDetailScreen(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 6.dp)
+                            // Положение пальца на полосе индикаторов переводим в номер фото, ограниченный размером списка.
                             .pointerInput(photos.size) {
                                 detectTapGestures { offset ->
                                     val page = (offset.x / size.width * photos.size).toInt()
@@ -147,7 +147,6 @@ fun EntryDetailScreen(
             }
         }
 
-        // Содержимое записи
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
 
             if (entryWithDetails.tags.isNotEmpty()) {
@@ -222,7 +221,6 @@ fun EntryDetailScreen(
         }
     }
 
-    // Полноэкранный просмотр фото
     fullscreenPage?.takeIf { it in photos.indices }?.let { startPage ->
         FullscreenPhotoViewer(
             photoPaths = photos.map { it.filePath },
@@ -231,7 +229,6 @@ fun EntryDetailScreen(
         )
     }
 
-    // Подтверждение удаления
     if (state.showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { viewModel.onDeleteDismiss() },
