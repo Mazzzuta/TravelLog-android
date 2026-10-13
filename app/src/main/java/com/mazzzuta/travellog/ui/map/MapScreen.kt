@@ -56,12 +56,14 @@ fun MapScreen(
     var selected by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var cameraInitialized by remember { mutableStateOf(false) }
     val focusEntry = remember(state.entries, focusEntryId) { state.entries.firstOrNull { it.entry.id == focusEntryId } }
+    // Совпадающие координаты показываем одной меткой со списком записей
     val groups = remember(state.entries) { state.entries.groupBy { it.entry.latitude!! to it.entry.longitude!! } }
     val positions = remember(groups) { groups.keys.toList() }
     val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
         if (grants.values.any { it }) viewModel.locate() else viewModel.showPermissionError()
     }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    // Передаём события и освобождаем карту при уходе с экрана.
     DisposableEffect(mapView, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {

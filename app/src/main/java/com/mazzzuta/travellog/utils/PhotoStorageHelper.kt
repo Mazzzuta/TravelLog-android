@@ -27,6 +27,7 @@ class PhotoStorageHelper(private val context: Context) {
                 destFile.outputStream().use { output -> it.copyTo(output) }
             }
         } catch (e: Exception) {
+            // Незавершённая копия не должна оставаться в хранилище после ошибки чтения или записи.
             destFile.delete()
             throw e
         }

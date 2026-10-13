@@ -1,6 +1,10 @@
 package com.mazzzuta.travellog.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
@@ -21,6 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +38,7 @@ import com.mazzzuta.travellog.database.ThemeMode
 import com.mazzzuta.travellog.ui.theme.AppPalette
 import com.mazzzuta.travellog.ui.theme.Palettes
 import com.mazzzuta.travellog.utils.DateFormatOption
+import com.mazzzuta.travellog.utils.AvatarImage
 import com.mazzzuta.travellog.utils.formatMonthYear
 import com.mazzzuta.travellog.viewmodels.SettingsViewModel
 import com.mazzzuta.travellog.viewmodels.SortOption
@@ -39,6 +48,10 @@ import org.koin.androidx.compose.koinViewModel
 fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsState()
     var showNicknameDialog by rememberSaveable { mutableStateOf(false) }
+    var showAvatarDialog by rememberSaveable { mutableStateOf(false) }
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) viewModel.setAvatar(uri)
+    }
     var showAboutDialog by rememberSaveable { mutableStateOf(false) }
     val systemDark = isSystemInDarkTheme()
 
@@ -55,6 +68,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
     }
 
     val activePalette = Palettes.resolve(p, systemDark)
+    val avatar = remember(p.avatar) { AvatarImage.decode(p.avatar)?.asImageBitmap() }
     val customSelected = activePalette in Palettes.additional
 
     Column(
@@ -67,6 +81,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
     ) {
         Text("Настройки", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
 
+        // Место под индикатор занято всегда, чтобы сохранение настройки не сдвигало весь экран
         Box(Modifier.fillMaxWidth().height(20.dp), contentAlignment = Alignment.Center) {
             if (state.isSaving || state.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
@@ -76,13 +91,15 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
         }
         state.saveError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-        // Профиль: ник + дата первого запуска
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(60.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                modifier = Modifier.size(60.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer)
+                    .clickable(enabled = !state.isSaving, role = Role.Button) { showAvatarDialog = true }
+                    .semantics { contentDescription = "Изменить аватар" },
                 contentAlignment = Alignment.Center
             ) {
-                Text(
+                if (avatar != null) Image(avatar, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                else Text(
                     p.nickname.firstOrNull()?.uppercase() ?: "П",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
@@ -113,7 +130,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
 
         Spacer(Modifier.height(24.dp))
 
-        // Режим темы
         SectionLabel("ВНЕШНИЙ ВИД")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             val light = Palettes.LightBase
@@ -130,7 +146,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
             ) { viewModel.setThemeMode(ThemeMode.DARK) }
             ThemeModeCard(
                 "Системная",
-                // левая половина светлая, правая тёмная
                 Brush.horizontalGradient(0f to light.bg, 0.5f to light.primary, 0.5f to dark.bg, 1f to dark.primary),
                 !customSelected && p.themeMode == ThemeMode.SYSTEM, Modifier.weight(1f)
             ) { viewModel.setThemeMode(ThemeMode.SYSTEM) }
@@ -138,7 +153,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
 
         Spacer(Modifier.height(24.dp))
 
-        // Дополнительные палитры доступны при любом стандартном режиме.
         SectionLabel("ЦВЕТОВАЯ СХЕМА")
         Text(
             "Выберите готовое оформление или используйте стандартную тему выше",
@@ -157,7 +171,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
 
         Spacer(Modifier.height(12.dp))
 
-        // Записи
         SectionLabel("ЗАПИСИ")
         SettingsCard {
             DropdownSettingRow(
@@ -191,7 +204,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
         }
         Spacer(Modifier.height(24.dp))
 
-        // Прочее
         SectionLabel("ПРОЧЕЕ")
         SettingsCard {
             Row(
@@ -200,6 +212,29 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
                 Text("О приложении", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
             }
         }
+    }
+
+    if (showAvatarDialog) {
+        AlertDialog(
+            onDismissRequest = { showAvatarDialog = false },
+            title = { Text("Аватар") },
+            text = { Text("Выберите фотографию. Изображение будет обрезано по центру.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAvatarDialog = false
+                    avatarPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }) { Text("Выбрать фото") }
+            },
+            dismissButton = {
+                Row {
+                    if (p.avatar != null) TextButton(onClick = {
+                        showAvatarDialog = false
+                        viewModel.setAvatar(null)
+                    }) { Text("Удалить") }
+                    TextButton(onClick = { showAvatarDialog = false }) { Text("Отмена") }
+                }
+            }
+        )
     }
 
     if (showNicknameDialog) {
@@ -281,7 +316,6 @@ private fun DropdownSettingRow(title: String, current: String, options: List<Pai
     }
 }
 
-/** Карточка режима темы: градиент своих цветов, выбранная получает рамку и галочку. */
 @Composable
 private fun ThemeModeCard(label: String, brush: Brush, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
@@ -312,7 +346,6 @@ private fun ThemeModeCard(label: String, brush: Brush, selected: Boolean, modifi
     }
 }
 
-/** Три основных цвета помогают увидеть оформление до выбора. */
 @Composable
 private fun PaletteTile(palette: AppPalette, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)

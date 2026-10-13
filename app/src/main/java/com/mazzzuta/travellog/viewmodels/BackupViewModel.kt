@@ -60,6 +60,7 @@ class BackupViewModel(private val manager: BackupManager) : ViewModel() {
                 if (manager.restore(prepared)) "Дневник и настройки восстановлены"
                 else "Дневник восстановлен, но настройки сохранить не удалось. Настройте оформление вручную."
             } finally {
+                // Проверенные файлы больше не нужны ни после успеха, ни после ошибки восстановления.
                 withContext(NonCancellable + Dispatchers.IO) { prepared.discard() }
                 pending = null
             }

@@ -42,6 +42,7 @@ class SettingsViewModel(private val repository: UserPreferencesRepository, priva
 
     private fun save(onSaved: () -> Unit = {}, action: suspend () -> Unit) {
         viewModelScope.launch {
+            // Быстрые изменения сохраняем по очереди; поздняя запись не должна перекрыть более новый выбор.
             writes.withLock {
                 _state.update { it.copy(isSaving = true, saveError = null) }
                 try { action(); onSaved() }
@@ -57,6 +58,7 @@ class SettingsViewModel(private val repository: UserPreferencesRepository, priva
         if (trimmed.isNotBlank()) save(onSaved) { repository.setNickname(trimmed) }
     }
     fun setThemeMode(mode: ThemeMode) = save { repository.setThemeMode(mode) }
+    fun setAvatar(uri: android.net.Uri?) = save { repository.setAvatar(uri) }
     fun setScheme(palette: AppPalette) = save { repository.setScheme(palette.id) }
     fun setDefaultSort(sort: SortOption) = save { repository.setDefaultSort(sort.sqlValue) }
     fun setDateFormat(option: DateFormatOption) = save { repository.setDateFormat(option.id) }

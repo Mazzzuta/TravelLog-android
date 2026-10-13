@@ -28,6 +28,7 @@ class BackupManager(private val context: Context, private val database: AppDatab
         val archive = File.createTempFile("travellog-export-", ".zip", context.cacheDir)
         try {
             val prefs = preferences.preferencesFlow.first()
+            // Читаем связанные таблицы одним снимком, чтобы параллельное редактирование не разорвало связи в архиве.
             val snapshot = database.withTransaction {
                 val dao = database.backupDao()
                 BackupData(trips = dao.trips(), entries = dao.entries(), photos = dao.photos(),
@@ -89,12 +90,12 @@ class BackupManager(private val context: Context, private val database: AppDatab
         }
     }
 
-    /** false означает: дневник восстановлен, настройки не удалось записать. */
     suspend fun restore(prepared: PreparedImport): Boolean = storage.withPhotoAccess {
         val destination = File(context.filesDir, "photos/import-${UUID.randomUUID()}")
         check(destination.mkdirs()) { "Не удалось подготовить фотографии" }
         var committed = false
         try {
+            // Новые фото лежат отдельно от текущих: при ошибке можно удалить их, не повредив прежний дневник.
             prepared.data.photoNames().forEach { name ->
                 currentCoroutineContext().ensureActive()
                 File(prepared.directory, name.substringAfter('/')).copyTo(File(destination, name.substringAfter('/')))
@@ -114,7 +115,6 @@ class BackupManager(private val context: Context, private val database: AppDatab
                     dao.insertLinks(data.links)
                 }
                 committed = true
-                // shortcut: Room и DataStore фиксируются отдельно; журнал восстановления нужен для атомарности при завершении процесса.
                 try {
                     preferences.restore(data.preferences)
                     true

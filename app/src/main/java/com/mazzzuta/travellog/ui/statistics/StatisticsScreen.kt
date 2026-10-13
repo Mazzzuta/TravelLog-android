@@ -126,6 +126,7 @@ private fun MonthlyChart(counts: List<Int>, year: Int) {
                     labelRotationDegrees = 0f,
                     itemPlacer = remember { HorizontalAxis.ItemPlacer.aligned(spacing = { 1 }, addExtremeLabelPadding = true) })),
             modelProducer = producer,
+            // Месяцы не сжимаем под ширину экрана
             scrollState = rememberVicoScrollState(scrollEnabled = true),
             zoomState = rememberVicoZoomState(
                 zoomEnabled = false, initialZoom = Zoom.fixed(1f),

@@ -39,6 +39,7 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
 
     val bottomTabRoutes = remember { BottomTab.entries.map { it.route::class.qualifiedName } }
     val showBottomBar = currentRoute in bottomTabRoutes
+    // Пауза чуть длиннее анимации: серия быстрых нажатий не запускает несколько переходов сразу.
     var lastNavigationAt by remember { mutableLongStateOf(0L) }
 
     Scaffold(
@@ -51,6 +52,7 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
                         if (now - lastNavigationAt >= 250 && currentRoute != route::class.qualifiedName) {
                             lastNavigationAt = now
                             navController.navigate(route) {
+                                // Возвращаясь во вкладку, восстанавливаем её состояние без накопления копий в стеке.
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true

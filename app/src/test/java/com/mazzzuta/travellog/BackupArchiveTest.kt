@@ -29,7 +29,7 @@ class BackupArchiveTest {
         tags = listOf(TagEntity(id = 31, name = "Природа", colorHex = "#B6FF00")),
         links = listOf(EntryTagCrossRef(entryId = 11, tagId = 31)),
         preferences = UserPrefs(nickname = "Максим", registeredAt = 123, themeMode = ThemeMode.DARK,
-            schemeId = "neon", defaultSort = "title", dateFormat = "mdy"),
+            schemeId = "neon", defaultSort = "title", dateFormat = "mdy", avatar = "dGVzdA=="),
     )
 
     private fun rawZip(data: BackupData = diary, photos: Map<String, ByteArray> = mapOf("photos/0.jpg" to byteArrayOf(1, 2, 3))): ByteArray {
@@ -69,6 +69,21 @@ class BackupArchiveTest {
     @Test fun emptyDiaryRoundTrips() {
         val empty = diary.copy(trips = emptyList(), entries = emptyList(), photos = emptyList(), tags = emptyList(), links = emptyList())
         assertEquals(empty, read(rawZip(empty, emptyMap())))
+    }
+
+    @Test fun oldBackupWithoutAvatarIsSupportedAndOversizedAvatarIsRejected() {
+        val old = diary.copy(preferences = diary.preferences.copy(avatar = null))
+        val output = ByteArrayOutputStream()
+        ZipOutputStream(output).use { zip ->
+            zip.putNextEntry(ZipEntry("data.json"))
+            zip.write(Json.encodeToString(old).toByteArray())
+            zip.closeEntry()
+            zip.putNextEntry(ZipEntry("photos/0.jpg"))
+            zip.write(byteArrayOf(1))
+            zip.closeEntry()
+        }
+        assertNull(read(output.toByteArray()).preferences.avatar)
+        rejects { read(rawZip(diary.copy(preferences = diary.preferences.copy(avatar = "a".repeat(128 * 1024 + 1))))) }
     }
 
     @Test fun missingOrExtraPhotoIsRejected() {

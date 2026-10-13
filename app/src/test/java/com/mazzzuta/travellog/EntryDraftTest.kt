@@ -3,7 +3,6 @@ package com.mazzzuta.travellog
 import com.mazzzuta.travellog.database.TripEntity
 import com.mazzzuta.travellog.viewmodels.*
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test

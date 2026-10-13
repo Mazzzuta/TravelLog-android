@@ -4,7 +4,6 @@ import androidx.compose.ui.graphics.Color
 import com.mazzzuta.travellog.database.ThemeMode
 import com.mazzzuta.travellog.database.UserPrefs
 
-/** Цветовая схема приложения: 10 ролей цвета (см. лист «Роли» в palettes.xlsx). */
 data class AppPalette(
     val id: String,
     val name: String,
@@ -73,6 +72,7 @@ object Palettes {
             ThemeMode.DARK -> true
             ThemeMode.SYSTEM -> systemDark
         }
+        // Новая палитра не зависит от режима; раздельные старые ключи нужны только для совместимости.
         val id = prefs.schemeId ?: if (isDark) prefs.darkSchemeId else prefs.lightSchemeId
         return all.firstOrNull { it.id == id } ?: if (isDark) DarkBase else LightBase
     }

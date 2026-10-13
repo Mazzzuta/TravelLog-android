@@ -24,6 +24,7 @@ data class BackupData(
 ) {
     fun photoNames(): Set<String> = (photos.map { it.filePath } + trips.mapNotNull { it.coverPhotoPath }).toSet()
 
+    // Проверяем связи и файлы до импорта, чтобы некорректный архив не заменил рабочий дневник.
     fun validate(availablePhotos: Set<String>) {
         require(version == 1) { "Эта версия архива не поддерживается" }
         fun unique(ids: List<Long>) = ids.all { it > 0 } && ids.toSet().size == ids.size
@@ -40,6 +41,7 @@ data class BackupData(
         require(links.distinct().size == links.size && links.all { it.entryId in entryIds && it.tagId in tagIds }) { "Некорректные связи тегов" }
         require(photoNames().all { PHOTO_NAME.matches(it) } && photoNames() == availablePhotos) { "В архиве отсутствуют фотографии или есть лишние файлы" }
         require(preferences.nickname.isNotBlank() && preferences.nickname.length <= 30 &&
+            (preferences.avatar == null || preferences.avatar.length <= 128 * 1024) &&
             preferences.registeredAt >= 0 && preferences.defaultSort in setOf("date_desc", "date_asc", "title") &&
             preferences.dateFormat in setOf("dmy", "mdy")) { "Некорректные настройки" }
     }
@@ -70,7 +72,7 @@ object BackupArchive {
         }
     }
 
-    // Принимаем только имена нашего формата; пути из ZIP никогда не используются для извлечения напрямую.
+    // Принимаем только имена формата.
     fun read(input: InputStream, directory: File): BackupData {
         check(directory.isDirectory && directory.listFiles()?.isEmpty() == true)
         val seen = mutableSetOf<String>()
@@ -84,6 +86,7 @@ object BackupArchive {
                 val limit = if (entry.name == "data.json") MAX_JSON else MAX_PHOTO
                 val target = File(directory, if (entry.name == "data.json") "data.json" else entry.name.substringAfter('/'))
                 var size = 0L
+                // Ограничиваем распакованные байты.
                 target.outputStream().use { output ->
                     val buffer = ByteArray(8192)
                     while (true) {
@@ -101,6 +104,7 @@ object BackupArchive {
         }
         val result = requireNotNull(data) { "В архиве нет data.json" }
         result.validate(seen - "data.json")
+        // Правила дат применяем при импорте.
         validateBackupTripDates(result.trips, result.entries)
         return result
     }

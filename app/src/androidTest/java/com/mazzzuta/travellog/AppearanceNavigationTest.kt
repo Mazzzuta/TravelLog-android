@@ -44,6 +44,7 @@ class AppearanceNavigationTest {
             }
         }
         val repository = UserPreferencesRepository(context, store)
+        // Подмены БД и настроек живут только в тесте; контейнер запущенного приложения не трогаем.
         testKoin = koinApplication {
             androidContext(context)
             modules(appModule, module {
@@ -59,6 +60,7 @@ class AppearanceNavigationTest {
         }
         compose.onNodeWithText("Настройки").performClick()
         compose.onNodeWithText(Palettes.Berries.name).performScrollTo()
+        // Защита навигации использует uptimeMillis, поэтому продвижение часов Compose здесь не заменяет паузу.
         Thread.sleep(300)
     }
 

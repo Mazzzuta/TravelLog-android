@@ -44,6 +44,7 @@ class EntryDetailViewModel(
         loadJob = viewModelScope.launch {
             try {
                 combine(repository.getEntryWithDetails(entryId), trips.getAllTrips()) { entry, allTrips ->
+                    // У Relation нет гарантии порядка; id разрешает совпадения orderIndex в старых данных.
                     entry?.copy(photos = entry.photos.sortedWith(compareBy({ it.orderIndex }, { it.id }))) to
                         allTrips.firstOrNull { it.id == entry?.entry?.tripId }?.title
                 }.collect { (entry, tripTitle) ->
