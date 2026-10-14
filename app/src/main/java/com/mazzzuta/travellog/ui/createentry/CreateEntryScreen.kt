@@ -28,6 +28,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.style.TextOverflow
+import com.mazzzuta.travellog.database.TagEntity
+import com.mazzzuta.travellog.database.MAX_TAG_LENGTH
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -37,7 +48,7 @@ import com.mazzzuta.travellog.utils.formatDate
 import com.mazzzuta.travellog.utils.toDatePickerMillis
 import com.mazzzuta.travellog.utils.fromDatePickerMillis
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CreateEntryScreen(
     onSaved: () -> Unit,
@@ -48,6 +59,7 @@ fun CreateEntryScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    var tagToDelete by remember { mutableStateOf<TagEntity?>(null) }
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
     val leave: () -> Unit = { if (state.hasChanges && !state.isSaved) showDiscardDialog = true else onCancel() }
     BackHandler { if (!state.isSaving) leave() }
@@ -57,6 +69,19 @@ fun CreateEntryScreen(
             text = { Text("Изменения в записи будут потеряны.") },
             confirmButton = { TextButton(onClick = { showDiscardDialog = false; onCancel() }) { Text("Выйти") } },
             dismissButton = { TextButton(onClick = { showDiscardDialog = false }) { Text("Остаться") } })
+    }
+    tagToDelete?.let { tag ->
+        AlertDialog(onDismissRequest = { if (!state.isDeletingTag) tagToDelete = null },
+            title = { Text("Удалить тег?") },
+            text = { Column {
+                Text("Тег «${tag.name}» будет удалён из всех записей. Сами записи останутся.")
+                state.tagDeleteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                if (state.isDeletingTag) LinearProgressIndicator(Modifier.fillMaxWidth())
+            } },
+            confirmButton = { TextButton(enabled = !state.isDeletingTag, onClick = {
+                viewModel.deleteTag(tag.id) { tagToDelete = null }
+            }) { Text("Удалить") } },
+            dismissButton = { TextButton(enabled = !state.isDeletingTag, onClick = { tagToDelete = null }) { Text("Отмена") } })
     }
     LaunchedEffect(state.formError) {
         state.formError?.let { snackbarHostState.showSnackbar(it); viewModel.onFormErrorShown() }
@@ -108,7 +133,7 @@ fun CreateEntryScreen(
             ) {
                 IconButton(onClick = leave, enabled = !state.isSaving) { Icon(Icons.Default.ArrowBack, contentDescription = "Назад") }
                 Text(if (entryId == null) "Новая запись" else "Изменить запись", fontWeight = FontWeight.ExtraBold)
-                Button(onClick = { viewModel.save() }, enabled = !state.isSaving && !state.isLoading && !state.isDetectingLocation && !state.isAddingTag && state.loadError == null) {
+                Button(onClick = { viewModel.save() }, enabled = !state.isSaving && !state.isLoading && !state.isDetectingLocation && !state.isAddingTag && !state.isDeletingTag && state.loadError == null) {
                     Box(contentAlignment = Alignment.Center) {
                         // Прозрачный текст удерживает ширину кнопки, пока поверх него показывается индикатор.
                         Text("Сохранить", modifier = Modifier.alpha(if (state.isSaving) 0f else 1f))
@@ -286,11 +311,23 @@ fun CreateEntryScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 state.availableTags.forEach { tag ->
-                    FilterChip(
-                        selected = tag.id in state.selectedTagIds,
-                        onClick = { viewModel.toggleTag(tag.id) },
-                        label = { Text(tag.name) }
-                    )
+                    val selected = tag.id in state.selectedTagIds
+                    Surface(shape = RoundedCornerShape(8.dp),
+                        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.padding(vertical = 4.dp).combinedClickable(
+                            enabled = !state.isDeletingTag && !state.isAddingTag,
+                            role = Role.Checkbox, onLongClickLabel = "Удалить тег",
+                            onClick = { viewModel.toggleTag(tag.id) },
+                            onLongClick = { viewModel.clearTagDeleteError(); tagToDelete = tag }
+                        ).semantics {
+                            this.selected = selected
+                            toggleableState = if (selected) ToggleableState.On else ToggleableState.Off
+                        }) {
+                        Text(tag.name, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -300,9 +337,10 @@ fun CreateEntryScreen(
                     onValueChange = viewModel::onNewTagNameChanged,
                     placeholder = { Text("Новый тег...") },
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    supportingText = { Text("${state.newTagName.length}/$MAX_TAG_LENGTH · Удерживайте тег для удаления") }
                 )
-                IconButton(onClick = { viewModel.addNewTag() }, enabled = state.newTagName.isNotBlank() && !state.isAddingTag) {
+                IconButton(onClick = { viewModel.addNewTag() }, enabled = state.newTagName.isNotBlank() && !state.isAddingTag && !state.isDeletingTag) {
                     if (state.isAddingTag) CircularProgressIndicator(Modifier.size(18.dp))
                     else Icon(Icons.Default.Add, contentDescription = "Добавить тег")
                 }

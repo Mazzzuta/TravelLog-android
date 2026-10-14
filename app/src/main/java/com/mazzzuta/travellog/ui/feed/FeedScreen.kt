@@ -13,7 +13,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Luggage
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.*
+import androidx.compose.runtime.key
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,11 +55,17 @@ fun FeedScreen(
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
 
         Column(modifier = Modifier.padding(horizontal = 20.dp).padding(top = 16.dp, bottom = 12.dp)) {
-            Text(
-                text = "Мои записи",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Мои записи", modifier = Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold)
+                FilledTonalButton(onClick = onTripsClick, colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
+                    Icon(Icons.Default.Luggage, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Поездки")
+                }
+            }
 
             Spacer(Modifier.height(14.dp))
 
@@ -70,57 +81,48 @@ fun FeedScreen(
 
             Spacer(Modifier.height(10.dp))
 
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssistChip(onClick = onTripsClick, label = { Text("Поездки") })
-
-                var sortMenuExpanded by remember { mutableStateOf(false) }
-                Box {
-                    AssistChip(
-                        onClick = { sortMenuExpanded = true },
-                        label = { Text(state.sortOption.label) }
-                    )
-                    DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
-                        SortOption.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.label) },
-                                onClick = {
-                                    viewModel.onSortChanged(option)
-                                    sortMenuExpanded = false
-                                }
-                            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                var filtersExpanded by remember { mutableStateOf(false) }
+                val activeFilters = listOf(state.tripId != null || state.onlyWithoutTrip, dateFrom != null).count { it }
+                Box(Modifier.weight(1f)) {
+                    FilterChip(selected = activeFilters > 0, onClick = { filtersExpanded = true },
+                        label = { Text(if (activeFilters > 0) "Фильтры · $activeFilters" else "Фильтры") },
+                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) })
+                    DropdownMenu(expanded = filtersExpanded, onDismissRequest = { filtersExpanded = false },
+                        modifier = Modifier.widthIn(max = 300.dp).heightIn(max = 400.dp)) {
+                        DropdownMenuItem(text = { Text("Поездка") }, enabled = false, onClick = {})
+                        DropdownMenuItem(text = { Text("Все записи") },
+                            trailingIcon = { if (state.tripId == null && !state.onlyWithoutTrip) Icon(Icons.Default.Check, null) },
+                            onClick = { viewModel.onTripFilterChanged(null); filtersExpanded = false })
+                        DropdownMenuItem(text = { Text("Без поездки") },
+                            trailingIcon = { if (state.onlyWithoutTrip) Icon(Icons.Default.Check, null) },
+                            onClick = { viewModel.onTripFilterChanged(null, true); filtersExpanded = false })
+                        state.trips.forEach { trip ->
+                            DropdownMenuItem(text = { Text(trip.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                                trailingIcon = { if (state.tripId == trip.id) Icon(Icons.Default.Check, null) },
+                                onClick = { viewModel.onTripFilterChanged(trip.id); filtersExpanded = false })
                         }
+                        HorizontalDivider()
+                        DropdownMenuItem(text = { Text(if (dateFrom != null && dateTo != null)
+                            "Период: ${formatDate(dateFrom, LocalDateFormat.current)} — ${formatDate(dateTo, LocalDateFormat.current)}" else "Выбрать период") },
+                            onClick = { filtersExpanded = false; showDateRange = true })
+                        if (hasFilters) DropdownMenuItem(text = { Text("Сбросить фильтры") },
+                            onClick = { viewModel.clearFilters(); filtersExpanded = false })
                     }
                 }
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                var tripMenuExpanded by remember { mutableStateOf(false) }
-                Box {
-                    FilterChip(
-                        selected = state.tripId != null || state.onlyWithoutTrip,
-                        onClick = { tripMenuExpanded = true },
-                        label = { Text(if (state.onlyWithoutTrip) "Без поездки" else state.trips.firstOrNull { it.id == state.tripId }?.title ?: "Все записи") },
-                    )
-                    DropdownMenu(expanded = tripMenuExpanded, onDismissRequest = { tripMenuExpanded = false }) {
-                        DropdownMenuItem(text = { Text("Все записи") }, onClick = {
-                            viewModel.onTripFilterChanged(null); tripMenuExpanded = false
-                        })
-                        DropdownMenuItem(text = { Text("Без поездки") }, onClick = {
-                            viewModel.onTripFilterChanged(null, onlyWithoutTrip = true); tripMenuExpanded = false
-                        })
-                        state.trips.forEach { trip ->
-                            DropdownMenuItem(text = { Text(trip.title) }, onClick = {
-                                viewModel.onTripFilterChanged(trip.id); tripMenuExpanded = false
+                var sortExpanded by remember { mutableStateOf(false) }
+                Box(Modifier.width(180.dp), contentAlignment = Alignment.CenterEnd) {
+                    AssistChip(modifier = Modifier.fillMaxWidth(), onClick = { sortExpanded = true },
+                        label = { Text(state.sortOption.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) })
+                    DropdownMenu(expanded = sortExpanded, onDismissRequest = { sortExpanded = false }) {
+                        SortOption.entries.forEach { option ->
+                            DropdownMenuItem(text = { Text(option.label) }, onClick = {
+                                viewModel.onSortChanged(option); sortExpanded = false
                             })
                         }
                     }
                 }
-                FilterChip(
-                    selected = state.dateFrom != null,
-                    onClick = { showDateRange = true },
-                    label = { Text(if (dateFrom != null && dateTo != null)
-                        "${formatDate(dateFrom, LocalDateFormat.current)} — ${formatDate(dateTo, LocalDateFormat.current)}" else "Период") },
-                )
-                if (hasFilters) AssistChip(onClick = viewModel::clearFilters, label = { Text("Сбросить") })
             }
         }
 
@@ -133,12 +135,14 @@ fun FeedScreen(
         } else if (state.entries.isEmpty()) {
             EmptyFeedState(hasFilters, if (hasFilters) viewModel::clearFilters else onCreateClick)
         } else {
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(state.entries, key = { it.entry.id }) { entryWithDetails ->
-                    EntryCard(entryWithDetails = entryWithDetails, onClick = { onEntryClick(entryWithDetails.entry.id) })
+            key(state.sortOption) {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(state.entries, key = { it.entry.id }) { entryWithDetails ->
+                        EntryCard(entryWithDetails = entryWithDetails, onClick = { onEntryClick(entryWithDetails.entry.id) })
+                    }
                 }
             }
         }
@@ -162,9 +166,10 @@ fun FeedScreen(
 }
 
 @Composable
-private fun EntryCard(entryWithDetails: EntryWithDetails, onClick: () -> Unit) {
+internal fun EntryCard(entryWithDetails: EntryWithDetails, onClick: () -> Unit) {
     val entry = entryWithDetails.entry
     val firstPhoto = entryWithDetails.photos.firstOrNull()?.filePath
+    val textColor = if (firstPhoto != null) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
 
     Card(
         onClick = onClick,
@@ -199,11 +204,19 @@ private fun EntryCard(entryWithDetails: EntryWithDetails, onClick: () -> Unit) {
             ) {
                 if (entryWithDetails.tags.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        entryWithDetails.tags.forEach { tag ->
-                            Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                        entryWithDetails.tags.take(3).forEach { tag ->
+                            Surface(modifier = Modifier.weight(1f, fill = false), color = MaterialTheme.colorScheme.primaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                 shape = RoundedCornerShape(8.dp)) {
                                 Text(tag.name, style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
+                            }
+                        }
+                        if (entryWithDetails.tags.size > 3) {
+                            Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shape = RoundedCornerShape(8.dp)) {
+                                Text("+${entryWithDetails.tags.size - 3}", style = MaterialTheme.typography.labelSmall,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
                             }
                         }
@@ -211,19 +224,19 @@ private fun EntryCard(entryWithDetails: EntryWithDetails, onClick: () -> Unit) {
                     Spacer(Modifier.height(6.dp))
                 }
                 entry.placeName?.let {
-                    Text(it, style = MaterialTheme.typography.labelMedium, color = Color.White)
+                    Text(it, style = MaterialTheme.typography.labelMedium, color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(4.dp))
                 }
                 Text(
                     entry.title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
+                    color = textColor, maxLines = 2, overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     formatDate(entry.date, LocalDateFormat.current),
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = textColor.copy(alpha = 0.7f)
                 )
             }
         }

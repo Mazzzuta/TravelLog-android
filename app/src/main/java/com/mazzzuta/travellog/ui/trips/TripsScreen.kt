@@ -34,6 +34,7 @@ fun TripsScreen(onBack: () -> Unit, onEntryClick: (Long) -> Unit, viewModel: Tri
     var expandedId by rememberSaveable { mutableStateOf<Long?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val dateFormat = LocalDateFormat.current
+    val entriesByTrip = remember(state.entries) { state.entries.groupBy { it.entry.tripId } }
     BackHandler(enabled = state.isDeleting) { }
     LaunchedEffect(state.saved) {
         if (state.saved) { editing = null; viewModel.clearMessage() }
@@ -62,7 +63,7 @@ fun TripsScreen(onBack: () -> Unit, onEntryClick: (Long) -> Unit, viewModel: Tri
                 }
                 else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                     items(state.trips, key = { it.id }) { trip ->
-                        val entries = state.entries.filter { it.entry.tripId == trip.id }
+                        val entries = entriesByTrip[trip.id].orEmpty()
                         val cover = trip.coverPhotoPath ?: entries.firstNotNullOfOrNull { it.photos.firstOrNull()?.filePath }
                         Card(onClick = { expandedId = if (expandedId == trip.id) null else trip.id }, shape = RoundedCornerShape(20.dp)) {
                             cover?.let { AsyncImage(model = it, contentDescription = null, contentScale = ContentScale.Crop,
