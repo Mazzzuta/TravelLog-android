@@ -3,6 +3,10 @@ package com.mazzzuta.travellog.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mazzzuta.travellog.database.ThemeMode
+import com.mazzzuta.travellog.database.EntryRepository
+import com.mazzzuta.travellog.database.TagEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.mazzzuta.travellog.database.UserPrefs
 import com.mazzzuta.travellog.database.UserPreferencesRepository
 import com.mazzzuta.travellog.ui.theme.AppPalette
@@ -19,12 +23,15 @@ import kotlinx.coroutines.sync.withLock
 
 data class SettingsUiState(val prefs: UserPrefs? = null, val isLoading: Boolean = true,
     val isSaving: Boolean = false, val loadError: String? = null, val saveError: String? = null,
-    val isCleaning: Boolean = false, val cleanupMessage: String? = null)
+    val isCleaning: Boolean = false, val cleanupMessage: String? = null,
+    val tags: List<TagEntity> = emptyList(), val isLoadingTags: Boolean = false, val tagsError: String? = null,
+    val isDeletingTags: Boolean = false, val isResetting: Boolean = false, val resetError: String? = null)
 
-class SettingsViewModel(private val repository: UserPreferencesRepository, private val cleanup: PhotoCleanup) : ViewModel() {
+class SettingsViewModel(private val repository: UserPreferencesRepository, private val cleanup: PhotoCleanup, private val entries: EntryRepository) : ViewModel() {
     private val _state = MutableStateFlow(SettingsUiState())
     val state = _state.asStateFlow()
     private var loadJob: Job? = null
+    private var tagsJob: Job? = null
     private val writes = Mutex()
 
     init { load() }
@@ -62,6 +69,42 @@ class SettingsViewModel(private val repository: UserPreferencesRepository, priva
     fun setScheme(palette: AppPalette) = save { repository.setScheme(palette.id) }
     fun setDefaultSort(sort: SortOption) = save { repository.setDefaultSort(sort.sqlValue) }
     fun setDateFormat(option: DateFormatOption) = save { repository.setDateFormat(option.id) }
+
+    fun loadTags() {
+        tagsJob?.cancel()
+        _state.update { it.copy(isLoadingTags = true, tagsError = null) }
+        tagsJob = viewModelScope.launch {
+            try { entries.getAllTags().collect { tags -> _state.update { it.copy(tags = tags, isLoadingTags = false) } } }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { _state.update { it.copy(isLoadingTags = false, tagsError = "Не удалось загрузить теги") } }
+        }
+    }
+
+    fun deleteTags(ids: List<Long>, onDeleted: () -> Unit) {
+        if (ids.isEmpty() || _state.value.isDeletingTags || _state.value.isResetting) return
+        _state.update { it.copy(isDeletingTags = true, tagsError = null) }
+        viewModelScope.launch {
+            try { entries.deleteTags(ids); onDeleted() }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { _state.update { it.copy(tagsError = "Не удалось удалить теги. Попробуйте ещё раз") } }
+            finally { _state.update { it.copy(isDeletingTags = false) } }
+        }
+    }
+
+    fun clearResetError() { _state.update { it.copy(resetError = null) } }
+
+    fun clearAllData() {
+        val state = _state.value
+        if (state.isResetting || state.isSaving || state.isCleaning || state.isDeletingTags) return
+        _state.update { it.copy(isResetting = true, resetError = null) }
+        viewModelScope.launch {
+            try {
+                check(withContext(Dispatchers.IO) { repository.clearAllData() })
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { _state.update { it.copy(resetError = "Не удалось удалить данные. Попробуйте ещё раз") } }
+            finally { _state.update { it.copy(isResetting = false) } }
+        }
+    }
 
     fun cleanPhotos() {
         if (_state.value.isCleaning) return

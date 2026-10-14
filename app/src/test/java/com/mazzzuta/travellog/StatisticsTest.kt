@@ -11,13 +11,13 @@ class StatisticsTest {
     private val zone = ZoneId.of("Asia/Chita")
 
     @Test fun localMonthBoundariesAndRelatedDataAreCounted() {
-        val tag = TagEntity(id = 1, name = "Горы")
-        val first = EntryWithDetails(EntryEntity(id = 1, title = "A", description = "", date =
-            Instant.parse("2025-12-31T16:00:00Z").toEpochMilli(), latitude = 0.0, longitude = 0.0),
-            listOf(PhotoEntity(id = 1, entryId = 1, filePath = "a.jpg")), listOf(tag))
-        val second = first.copy(entry = first.entry.copy(id = 2, date = Instant.parse("2026-03-01T00:00:00Z").toEpochMilli()),
-            photos = emptyList(), tags = listOf(tag, tag))
-        val stats = calculateStatistics(listOf(first, second), 3, zone)
+        val data = StatisticsData(
+            dates = listOf(Instant.parse("2025-12-31T16:00:00Z").toEpochMilli(),
+                Instant.parse("2026-03-01T00:00:00Z").toEpochMilli()),
+            totals = StatisticsTotals(trips = 3, photos = 1, places = 1),
+            tags = listOf(TagCount("Горы", 2), TagCount("Не используется", 0)),
+        )
+        val stats = calculateStatistics(data, zone)
         assertEquals(2, stats.entries)
         assertEquals(3, stats.trips)
         assertEquals(1, stats.photos)
@@ -28,11 +28,11 @@ class StatisticsTest {
     }
 
     @Test fun emptyDiaryAndUnknownLocationsHaveNoInventedData() {
-        val empty = calculateStatistics(emptyList(), 0, zone)
+        val empty = calculateStatistics(StatisticsData(emptyList(), StatisticsTotals(0, 0, 0), emptyList()), zone)
         assertEquals(0, empty.entries)
         assertTrue(empty.monthsByYear.isEmpty())
         assertTrue(empty.tags.isEmpty())
-        val entry = EntryWithDetails(EntryEntity(title = "A", description = "", date = 0), emptyList(), emptyList())
-        assertEquals(0, calculateStatistics(listOf(entry), 0, zone).places)
+        val data = StatisticsData(listOf(0L), StatisticsTotals(0, 0, 0), emptyList())
+        assertEquals(0, calculateStatistics(data, zone).places)
     }
 }

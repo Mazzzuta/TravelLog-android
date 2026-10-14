@@ -23,7 +23,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -52,6 +51,12 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) viewModel.setAvatar(uri)
     }
+    val context = LocalContext.current
+    val version = remember(context) {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "0.9.0"
+    }
+    var showTagsDialog by rememberSaveable { mutableStateOf(false) }
+    var showResetDialog by rememberSaveable { mutableStateOf(false) }
     var showAboutDialog by rememberSaveable { mutableStateOf(false) }
     val systemDark = isSystemInDarkTheme()
 
@@ -136,17 +141,17 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
             val dark = Palettes.DarkBase
             ThemeModeCard(
                 "Светлая",
-                Brush.horizontalGradient(listOf(light.bg, light.primaryDim, light.primary)),
+                listOf(light.bg, light.surface, light.primary),
                 !customSelected && p.themeMode == ThemeMode.LIGHT, Modifier.weight(1f)
             ) { viewModel.setThemeMode(ThemeMode.LIGHT) }
             ThemeModeCard(
                 "Тёмная",
-                Brush.horizontalGradient(listOf(dark.bg, dark.primaryDim, dark.primary)),
+                listOf(dark.bg, dark.surface, dark.primary),
                 !customSelected && p.themeMode == ThemeMode.DARK, Modifier.weight(1f)
             ) { viewModel.setThemeMode(ThemeMode.DARK) }
             ThemeModeCard(
                 "Системная",
-                Brush.horizontalGradient(0f to light.bg, 0.5f to light.primary, 0.5f to dark.bg, 1f to dark.primary),
+                if (systemDark) listOf(dark.bg, dark.surface, dark.primary) else listOf(light.bg, light.surface, light.primary),
                 !customSelected && p.themeMode == ThemeMode.SYSTEM, Modifier.weight(1f)
             ) { viewModel.setThemeMode(ThemeMode.SYSTEM) }
         }
@@ -186,6 +191,12 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
             )
         }
 
+        Spacer(Modifier.height(12.dp))
+        SettingsCard {
+            Row(Modifier.fillMaxWidth().clickable { viewModel.loadTags(); showTagsDialog = true }.padding(16.dp)) {
+                Text("Управление тегами", fontWeight = FontWeight.Bold)
+            }
+        }
         Spacer(Modifier.height(24.dp))
 
         BackupSection()
@@ -200,18 +211,43 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
                 }
                 if (state.isCleaning) LinearProgressIndicator(Modifier.fillMaxWidth())
                 state.cleanupMessage?.let { Text(it) }
+                HorizontalDivider()
+                OutlinedButton(onClick = { viewModel.clearResetError(); showResetDialog = true },
+                    enabled = !state.isCleaning && !state.isSaving && !state.isResetting && !state.isDeletingTags,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                    Text("Удалить все данные")
+                }
             }
         }
         Spacer(Modifier.height(24.dp))
 
         SectionLabel("ПРОЧЕЕ")
         SettingsCard {
+            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Версия", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                Text(version, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(horizontal = 16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth().clickable { showAboutDialog = true }.padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
                 Text("О приложении", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
             }
         }
+    }
+
+    if (showTagsDialog) TagManagementDialog(viewModel, onDismiss = { showTagsDialog = false })
+
+    if (showResetDialog) {
+        AlertDialog(onDismissRequest = { if (!state.isResetting) showResetDialog = false },
+            title = { Text("Удалить все данные?") },
+            text = { Column {
+                Text("Все записи, поездки, теги, сохранённые фотографии, аватар и настройки будут удалены без возможности отмены. Сначала сохраните ZIP, если нужен дневник. Приложение закроется; при следующем запуске оно будет пустым. Фотографии в галерее и ранее экспортированные архивы останутся.")
+                state.resetError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                if (state.isResetting) LinearProgressIndicator(Modifier.fillMaxWidth())
+            } },
+            confirmButton = { TextButton(enabled = !state.isResetting, onClick = viewModel::clearAllData) { Text("Удалить всё") } },
+            dismissButton = { TextButton(enabled = !state.isResetting, onClick = { showResetDialog = false }) { Text("Отмена") } })
     }
 
     if (showAvatarDialog) {
@@ -266,10 +302,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
     }
 
     if (showAboutDialog) {
-        val context = LocalContext.current
-        val version = remember {
-            runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1.0"
-        }
         AlertDialog(
             onDismissRequest = { showAboutDialog = false },
             title = { Text("TravelLog") },
@@ -317,7 +349,7 @@ private fun DropdownSettingRow(title: String, current: String, options: List<Pai
 }
 
 @Composable
-private fun ThemeModeCard(label: String, brush: Brush, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun ThemeModeCard(label: String, colors: List<Color>, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     Column(
         modifier = modifier
@@ -329,9 +361,12 @@ private fun ThemeModeCard(label: String, brush: Brush, selected: Boolean, modifi
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(10.dp)).background(brush),
+            modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center
         ) {
+            Row(Modifier.fillMaxSize()) {
+                colors.forEach { color -> Box(Modifier.weight(1f).fillMaxHeight().background(color)) }
+            }
             if (selected) {
                 Box(
                     modifier = Modifier.size(24.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.45f)),

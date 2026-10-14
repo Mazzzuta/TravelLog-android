@@ -3,6 +3,8 @@ package com.mazzzuta.travellog.database
 import kotlinx.coroutines.flow.Flow
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.mazzzuta.travellog.utils.isFutureDate
 
 class EntryRepository(
@@ -23,6 +25,17 @@ class EntryRepository(
 
     fun getEntryWithDetails(entryId: Long): Flow<EntryWithDetails?> =
         entryDao.getEntryWithDetails(entryId)
+
+    fun getMapEntries(): Flow<List<EntryWithDetails>> = entryDao.getMapEntries()
+
+    // Для статистики не нужны описания и списки фото; все счётчики читаем из одного состояния БД.
+    fun observeStatistics(): Flow<StatisticsData> = database.invalidationTracker
+        .createFlow("entries", "trips", "photos", "tags", "entry_tag_cross_ref")
+        .map {
+            database.withTransaction {
+                StatisticsData(entryDao.getStatisticsDates(), entryDao.getStatisticsTotals(), tagDao.getTagUsageStats().first())
+            }
+        }.distinctUntilChanged()
 
     // Проверяем поездку и сохраняем запись с фото и тегами в одной транзакции.
     suspend fun createEntry(entry: EntryEntity, photoPaths: List<String>, tagIds: List<Long>, autoAssignTrip: Boolean = false): Long = database.withTransaction {
@@ -62,9 +75,14 @@ class EntryRepository(
     fun getTotalEntriesCount(): Flow<Int> = entryDao.getTotalEntriesCount()
     fun getTagUsageStats(): Flow<List<TagCount>> = tagDao.getTagUsageStats()
     fun getAllTags(): Flow<List<TagEntity>> = tagDao.getAllTags()
+    suspend fun deleteTags(ids: List<Long>) = database.withTransaction {
+        ids.chunked(900).forEach { tagDao.deleteTags(it) }
+    }
+
     suspend fun createTag(name: String): Long = database.withTransaction {
         val trimmed = name.trim()
         require(trimmed.isNotEmpty()) { "Введите название тега" }
+        require(trimmed.length <= MAX_TAG_LENGTH) { "Название тега — не больше $MAX_TAG_LENGTH символов" }
         // «Лес» и « лес » считаем одним тегом.
         tagDao.getAllTags().first().firstOrNull { it.name.trim().equals(trimmed, ignoreCase = true) }?.id
             ?: tagDao.insert(TagEntity(name = trimmed))

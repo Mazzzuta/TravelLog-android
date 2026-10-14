@@ -36,6 +36,9 @@ import org.koin.androidx.compose.koinViewModel
 import coil3.compose.AsyncImage
 import com.mazzzuta.travellog.utils.LocalDateFormat
 import com.mazzzuta.travellog.utils.formatDate
+import com.mazzzuta.travellog.utils.hasInternetConnection
+import com.mazzzuta.travellog.utils.observeInternetConnection
+import kotlinx.coroutines.delay
 
 @Composable
 fun MapScreen(
@@ -46,6 +49,8 @@ fun MapScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val online by remember(context) { context.observeInternetConnection() }
+        .collectAsState(initial = context.hasInternetConnection())
     val mapView = remember(context) {
         MapLibre.getInstance(context)
         MapView(context, MapLibreMapOptions.createFromAttributes(context).textureMode(true)).apply { onCreate(null) }
@@ -53,6 +58,7 @@ fun MapScreen(
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var mapError by remember { mutableStateOf(false) }
+    var loadAttempt by remember { mutableIntStateOf(0) }
     var selected by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var cameraInitialized by remember { mutableStateOf(false) }
     val focusEntry = remember(state.entries, focusEntryId) { state.entries.firstOrNull { it.entry.id == focusEntryId } }
@@ -86,6 +92,18 @@ fun MapScreen(
         val listener = MapView.OnDidFailLoadingMapListener { mapError = true }
         mapView.addOnDidFailLoadingMapListener(listener)
         onDispose { mapView.removeOnDidFailLoadingMapListener(listener) }
+    }
+    LaunchedEffect(map, online, loadAttempt) {
+        val currentMap = map ?: return@LaunchedEffect
+        if (loaded && !mapError) return@LaunchedEffect
+        loaded = false
+        mapError = false
+        currentMap.setStyle("https://tiles.openfreemap.org/styles/liberty") {
+            loaded = true
+            mapError = false
+        }
+        delay(15_000)
+        if (!loaded) mapError = true
     }
     LaunchedEffect(map, loaded, positions, state.isLoading) {
         val currentMap = map
@@ -124,10 +142,6 @@ fun MapScreen(
                     true
                 }
                 currentMap.addOnMapClickListener { selected = null; false }
-                currentMap.setStyle("https://tiles.openfreemap.org/styles/liberty") {
-                    loaded = true
-                    mapError = false
-                }
             } }
         })
         Card(Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth()) {
@@ -142,18 +156,16 @@ fun MapScreen(
                             Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                     }) { Text(if (state.isLocating) "Поиск…" else "Где я") }
                 }
-                if (state.isLoading || (!loaded && !mapError)) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (state.isLoading || (!loaded && !mapError && online)) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (!state.isLoading && state.entries.isEmpty()) Text("Пока нет мест. Добавьте геолокацию в запись.")
                 if (!state.isLoading && focusEntryId != null && focusEntry == null) {
                     Text("У этой записи больше нет места на карте.")
                 }
-                if (mapError) {
+                if (!online) {
+                    Text("Нет подключения к интернету. Для загрузки карты подключитесь к сети.", color = MaterialTheme.colorScheme.error)
+                } else if (mapError) {
                     Text("Не удалось загрузить карту. Проверьте интернет.", color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = {
-                        mapError = false
-                        loaded = false
-                        map?.setStyle("https://tiles.openfreemap.org/styles/liberty") { loaded = true }
-                    }) { Text("Повторить") }
+                    TextButton(onClick = { loadAttempt++ }) { Text("Повторить") }
                 }
                 state.error?.let { message ->
                     Text(message, color = MaterialTheme.colorScheme.error)

@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.mazzzuta.travellog.database.EntryEntity
 import com.mazzzuta.travellog.database.EntryRepository
 import com.mazzzuta.travellog.database.TagEntity
+import com.mazzzuta.travellog.database.MAX_TAG_LENGTH
 import com.mazzzuta.travellog.database.TripRepository
 import com.mazzzuta.travellog.database.TripEntity
 import com.mazzzuta.travellog.utils.GeocoderHelper
+import com.mazzzuta.travellog.utils.NoInternetException
 import com.mazzzuta.travellog.utils.LocationHelper
 import com.mazzzuta.travellog.utils.PhotoStorageHelper
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +50,8 @@ data class CreateEntryUiState(
     val saveError: String? = null,
     val hasChanges: Boolean = false,
     val isAddingTag: Boolean = false,
+    val isDeletingTag: Boolean = false,
+    val tagDeleteError: String? = null,
     val formError: String? = null,
     val locationFound: Boolean = false,
 )
@@ -96,7 +100,10 @@ class CreateEntryViewModel(
         if (entryId != null) loadEntry() else _uiState.value = restoreDraft(_uiState.value)
         viewModelScope.launch {
             try {
-                repository.getAllTags().collect { tags -> _uiState.update { it.copy(availableTags = tags) } }
+                repository.getAllTags().collect { tags ->
+                    _uiState.update { it.copy(availableTags = tags) }
+                    edit { it.copy(selectedTagIds = it.selectedTagIds.intersect(tags.map { tag -> tag.id }.toSet())) }
+                }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { _uiState.update { it.copy(formError = "Не удалось загрузить теги. Откройте форму заново") } }
         }
@@ -183,26 +190,46 @@ class CreateEntryViewModel(
     }
 
     fun onNewTagNameChanged(text: String) {
-        edit { it.copy(newTagName = text) }
+        edit { it.copy(newTagName = text.take(MAX_TAG_LENGTH)) }
     }
 
     fun addNewTag() {
         val name = _uiState.value.newTagName.trim()
-        if (name.isBlank() || _uiState.value.isAddingTag || _uiState.value.isSaving) return
+        if (name.isBlank() || _uiState.value.isAddingTag || _uiState.value.isDeletingTag || _uiState.value.isSaving) return
         _uiState.update { it.copy(isAddingTag = true) }
         viewModelScope.launch {
             try {
                 val id = repository.createTag(name)
                 edit { it.copy(selectedTagIds = it.selectedTagIds + id, newTagName = if (it.newTagName.trim() == name) "" else it.newTagName) }
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { _uiState.update { it.copy(formError = "Не удалось добавить тег. Попробуйте ещё раз") } }
+            catch (e: Exception) { _uiState.update { it.copy(formError = if (e is IllegalArgumentException) e.message else "Не удалось добавить тег. Попробуйте ещё раз") } }
             finally { _uiState.update { it.copy(isAddingTag = false) } }
         }
     }
 
+    fun deleteTag(id: Long, onDeleted: () -> Unit) {
+        if (_uiState.value.isSaving || _uiState.value.isAddingTag || _uiState.value.isDeletingTag) return
+        _uiState.update { it.copy(isDeletingTag = true, tagDeleteError = null) }
+        viewModelScope.launch {
+            try {
+                repository.deleteTags(listOf(id))
+                edit { it.copy(selectedTagIds = it.selectedTagIds - id) }
+                onDeleted()
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { _uiState.update { it.copy(tagDeleteError = "Не удалось удалить тег. Попробуйте ещё раз") } }
+            finally { _uiState.update { it.copy(isDeletingTag = false) } }
+        }
+    }
+
+    fun clearTagDeleteError() { _uiState.update { it.copy(tagDeleteError = null) } }
+
     fun detectLocation() = findLocation {
         val location = locationHelper.getCurrentLocation() ?: return@findLocation null
-        val name = withTimeoutOrNull(8_000) { geocoderHelper.getPlaceName(location.latitude, location.longitude) }
+        val name = try { geocoderHelper.getPlaceName(location.latitude, location.longitude) }
+        catch (_: NoInternetException) {
+            _uiState.update { it.copy(formError = "Координаты определены. Для поиска названия места подключитесь к интернету") }
+            null
+        }
         Triple(location.latitude, location.longitude, name ?: "Неизвестное место")
     }
 
@@ -216,6 +243,7 @@ class CreateEntryViewModel(
                 if (result == null) _uiState.update { it.copy(locationSearchError = "Не удалось найти место. Проверьте геолокацию и интернет или уточните запрос") }
                 else edit { it.copy(latitude = result.first, longitude = result.second, placeName = result.third, locationFound = true) }
             } catch (e: CancellationException) { throw e }
+            catch (e: NoInternetException) { _uiState.update { it.copy(locationSearchError = e.message) } }
             catch (_: Exception) { _uiState.update { it.copy(locationSearchError = "Ошибка поиска места. Попробуйте ещё раз") } }
             // Отменённый поиск может завершиться позже нового; его finally не должен снимать новый индикатор.
             finally { if (version == locationVersion) _uiState.update { it.copy(isDetectingLocation = false) } }
@@ -242,7 +270,7 @@ class CreateEntryViewModel(
     // Сначала копируем новые фото, затем сохраняем запись. При сбое удаляем только копии этой попытки.
     fun save() {
         val state = _uiState.value
-        if (state.isLoading || state.loadError != null || state.isSaving || state.isSaved || state.isDetectingLocation || state.isAddingTag) return
+        if (state.isLoading || state.loadError != null || state.isSaving || state.isSaved || state.isDetectingLocation || state.isAddingTag || state.isDeletingTag) return
         if (state.title.isBlank()) {
             _uiState.update { it.copy(titleError = "Название записи не может быть пустым") }
             return

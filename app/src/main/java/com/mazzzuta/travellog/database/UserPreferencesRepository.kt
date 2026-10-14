@@ -1,6 +1,7 @@
 package com.mazzzuta.travellog.database
 
 import android.content.Context
+import android.app.ActivityManager
 import android.net.Uri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -67,6 +68,9 @@ class UserPreferencesRepository(private val context: Context, private val store:
     suspend fun ensureRegisteredAt() {
         store.edit { if (it[Keys.REGISTERED_AT] == null) it[Keys.REGISTERED_AT] = System.currentTimeMillis() }
     }
+
+    fun clearAllData(): Boolean =
+        (context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)?.clearApplicationUserData() == true
 
     suspend fun setNickname(name: String) = store.edit { it[Keys.NICKNAME] = name }
     suspend fun setAvatar(uri: Uri?) = withContext(Dispatchers.IO) {

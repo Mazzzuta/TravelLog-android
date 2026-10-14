@@ -19,6 +19,9 @@ interface TagDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun addTagToEntry(crossRef: EntryTagCrossRef)
 
+    @Query("DELETE FROM tags WHERE id IN (:ids)")
+    suspend fun deleteTags(ids: List<Long>)
+
     @Delete
     suspend fun removeTagFromEntry(crossRef: EntryTagCrossRef)
 

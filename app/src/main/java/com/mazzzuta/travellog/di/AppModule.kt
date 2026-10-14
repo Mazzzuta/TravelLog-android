@@ -54,10 +54,10 @@ val appModule = module {
     single { UserPreferencesRepository(androidContext()) }
     single { BackupManager(androidContext(), get(), get(), get()) }
     viewModel { BackupViewModel(get()) }
-    viewModel { SettingsViewModel(get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get()) }
     viewModel { TripsViewModel(get(), get()) }
     viewModel { MapViewModel(get(), get()) }
-    viewModel { StatisticsViewModel(get(), get()) }
+    viewModel { StatisticsViewModel(get()) }
 
     viewModel { parameters -> CreateEntryViewModel(get(), get(), get(), get(), get(), parameters.getOrNull<Long>(), get()) }
 }

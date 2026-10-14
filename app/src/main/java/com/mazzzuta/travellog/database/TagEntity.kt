@@ -4,6 +4,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
+const val MAX_TAG_LENGTH = 30
+
 @Entity(tableName = "tags")
 @Serializable
 data class TagEntity(

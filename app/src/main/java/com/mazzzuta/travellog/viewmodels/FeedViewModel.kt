@@ -13,6 +13,8 @@ import com.mazzzuta.travellog.utils.endOfDayMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,7 +49,7 @@ data class FeedUiState(
     val error: String? = null,
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class FeedViewModel(
     private val repository: EntryRepository,
     private val prefsRepository: UserPreferencesRepository,
@@ -64,17 +66,21 @@ class FeedViewModel(
         }
     }
 
-    val uiState: StateFlow<FeedUiState> = combine(filters, tripRepository.getAllTrips()) { filter, trips ->
+    private val results = combine(filters.debounce(250), tripRepository.getAllTrips()) { filter, trips ->
         filter.copy(trips = trips, tripId = filter.tripId?.takeIf { id -> trips.any { it.id == id } })
     }.flatMapLatest { filter ->
         repository.searchEntries(query = filter.query, tripId = filter.tripId,
             dateFrom = filter.dateFrom, dateTo = filter.dateTo, sortBy = filter.sortOption.sqlValue,
             onlyWithoutTrip = filter.onlyWithoutTrip)
             .map { filter.copy(entries = it, isLoading = false) }
-            .onStart { emit(filter.copy(isLoading = true)) }
             .catch { emit(filter.copy(isLoading = false, error = "Не удалось загрузить записи")) }
     }
-        .stateIn(
+
+    val uiState: StateFlow<FeedUiState> = combine(filters, results.onStart { emit(FeedUiState()) }) { filter, result ->
+        result.copy(query = filter.query,
+            tripId = filter.tripId?.takeIf { id -> result.trips.any { it.id == id } },
+            onlyWithoutTrip = filter.onlyWithoutTrip, dateFrom = filter.dateFrom, dateTo = filter.dateTo)
+    }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = FeedUiState()

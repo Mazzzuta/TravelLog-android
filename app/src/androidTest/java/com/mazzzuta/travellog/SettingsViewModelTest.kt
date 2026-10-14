@@ -33,7 +33,8 @@ class SettingsViewModelTest {
         val store = ViewModelStore()
         try {
             val viewModel = withContext(Dispatchers.Main) {
-                SettingsViewModel(UserPreferencesRepository(context, brokenStore), PhotoCleanup(context, database, PhotoStorageHelper(context)))
+                SettingsViewModel(UserPreferencesRepository(context, brokenStore), PhotoCleanup(context, database, PhotoStorageHelper(context)),
+                    EntryRepository(database.entryDao(), database.photoDao(), database.tagDao(), database))
                     .also { store.put("settings", it) }
             }
             val failed = withTimeout(3000) { viewModel.state.first { !it.isLoading } }
