@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mazzzuta.travellog.database.EntryRepository
 import com.mazzzuta.travellog.database.EntryWithDetails
-import com.mazzzuta.travellog.database.hasCoordinates
 import com.mazzzuta.travellog.utils.LocationHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -33,8 +32,8 @@ class MapViewModel(private val repository: EntryRepository, private val location
         _uiState.update { it.copy(isLoading = true, error = null) }
         loadJob = viewModelScope.launch {
             try {
-                repository.searchEntries().collect { entries ->
-                    _uiState.update { it.copy(entries = entries.filter { entry -> entry.entry.hasCoordinates() }, isLoading = false) }
+                repository.getMapEntries().collect { entries ->
+                    _uiState.update { it.copy(entries = entries, isLoading = false) }
                 }
             } catch (e: CancellationException) {
                 throw e

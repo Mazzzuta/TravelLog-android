@@ -47,6 +47,23 @@ interface EntryDao {
     @Query("SELECT * FROM entries WHERE id = :entryId")
     fun getEntryWithDetails(entryId: Long): Flow<EntryWithDetails?>
 
+    @Transaction
+    @Query("SELECT * FROM entries WHERE latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180 ORDER BY date DESC")
+    fun getMapEntries(): Flow<List<EntryWithDetails>>
+
+    @Query("SELECT date FROM entries ORDER BY id")
+    suspend fun getStatisticsDates(): List<Long>
+
+    @Query("""
+        SELECT (SELECT COUNT(*) FROM trips) AS trips,
+            (SELECT COUNT(*) FROM photos) AS photos,
+            (SELECT COUNT(*) FROM (
+                SELECT DISTINCT latitude, longitude FROM entries
+                WHERE latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180
+            )) AS places
+    """)
+    suspend fun getStatisticsTotals(): StatisticsTotals
+
     @Query("SELECT strftime('%Y-%m', date/1000, 'unixepoch') as month, COUNT(*) as count FROM entries GROUP BY month ORDER BY month")
     fun getEntryCountByMonth(): Flow<List<MonthCount>>
 
