@@ -3,7 +3,8 @@ package com.mazzzuta.travellog.navigation
 import android.os.SystemClock
 import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,7 +50,7 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
                     currentRoute = currentRoute,
                     onTabSelected = { route ->
                         val now = SystemClock.uptimeMillis()
-                        if (now - lastNavigationAt >= 250 && currentRoute != route::class.qualifiedName) {
+                        if (now - lastNavigationAt >= 300 && currentRoute != route::class.qualifiedName) {
                             lastNavigationAt = now
                             navController.navigate(route) {
                                 // Возвращаясь во вкладку, восстанавливаем её состояние без накопления копий в стеке.
@@ -61,7 +62,7 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
                     },
                     onCreateClick = {
                         val now = SystemClock.uptimeMillis()
-                        if (now - lastNavigationAt >= 250) {
+                        if (now - lastNavigationAt >= 300) {
                             lastNavigationAt = now
                             navController.navigate(Route.CreateEntry)
                         }
@@ -73,10 +74,10 @@ fun TravelLogNavHost(navController: NavHostController = rememberNavController())
         NavHost(
             navController = navController,
             startDestination = Route.Feed,
-            enterTransition = { slideInHorizontally(tween(180)) { it } },
-            exitTransition = { slideOutHorizontally(tween(180)) { -it } },
-            popEnterTransition = { slideInHorizontally(tween(180)) { -it } },
-            popExitTransition = { slideOutHorizontally(tween(180)) { it } },
+            enterTransition = { fadeIn(tween(180, delayMillis = 90)) + slideInHorizontally(tween(180, delayMillis = 90)) { it / 16 } },
+            exitTransition = { fadeOut(tween(90)) },
+            popEnterTransition = { fadeIn(tween(180, delayMillis = 90)) + slideInHorizontally(tween(180, delayMillis = 90)) { -it / 16 } },
+            popExitTransition = { fadeOut(tween(90)) },
             modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()
                 .padding(bottom = if (showBottomBar) padding.calculateBottomPadding() else 0.dp)
         ) {
