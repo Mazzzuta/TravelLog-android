@@ -204,11 +204,12 @@ fun CreateEntryScreen(
                     OutlinedButton(
                         onClick = { photoPickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         modifier = Modifier.size(96.dp),
+                        contentPadding = PaddingValues(8.dp),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.CameraAlt, contentDescription = null)
-                            Text("Добавить", style = MaterialTheme.typography.labelSmall)
+                            Text("Добавить", style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
                     }
                 }
@@ -325,8 +326,9 @@ fun CreateEntryScreen(
                             this.selected = selected
                             toggleableState = if (selected) ToggleableState.On else ToggleableState.Off
                         }) {
-                        Text(tag.name, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
+                        Text(tag.name, style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
                     }
                 }
             }
@@ -378,27 +380,31 @@ fun CreateEntryScreen(
             LaunchedEffect(state.locationFound) { if (state.locationFound) showLocationSearch = false }
             val dismissSearch: () -> Unit = { viewModel.cancelLocationSearch(); showLocationSearch = false }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        val hasPermission = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                        if (hasPermission) viewModel.detectLocation()
-                        else locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = !state.isDetectingLocation
+            BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    maxItemsInEachRow = if (maxWidth < 340.dp) 1 else 2
                 ) {
-                    Text("Автоматически")
-                }
-                OutlinedButton(
-                    onClick = { viewModel.cancelLocationSearch(); showLocationSearch = true },
-                    enabled = !state.isDetectingLocation,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Ввести вручную")
+                    OutlinedButton(
+                        onClick = {
+                            val hasPermission = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                            if (hasPermission) viewModel.detectLocation()
+                            else locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                        },
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                        enabled = !state.isDetectingLocation
+                    ) {
+                        Text("Автоматически")
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.cancelLocationSearch(); showLocationSearch = true },
+                        enabled = !state.isDetectingLocation,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                    ) {
+                        Text("Ввести вручную")
+                    }
                 }
             }
 
