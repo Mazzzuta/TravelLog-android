@@ -197,7 +197,7 @@ class RequestedChangesTest {
         compose.waitUntil(5000) { viewModel.state.value.tags.size == 1 && !viewModel.state.value.isDeletingTags }
         compose.onNodeWithText("Закрыть").performClick()
         compose.onNodeWithText("Версия").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("0.9.0").assertIsDisplayed()
+        compose.onNodeWithText("1.0.0").assertIsDisplayed()
         compose.onNodeWithText("Удалить все данные").performScrollTo().performClick()
         compose.onNodeWithText("Удалить все данные?").assertIsDisplayed()
         compose.onNodeWithText("Отмена").performClick()

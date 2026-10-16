@@ -62,7 +62,7 @@ fun StatisticsScreen(onCreateClick: () -> Unit, viewModel: StatisticsViewModel =
                         }
                     }
                 if (statistics.entries == 0) {
-                    Text("Пока нет записей. Добавьте первое путешествие — здесь появятся график и любимые теги.")
+                    Text("Пока нет записей. Добавьте первое путешествие — здесь появятся ваша статистика.")
                     Button(onClick = onCreateClick) { Text("Добавить запись") }
                 } else {
                     val years = (statistics.monthsByYear.keys + Year.now().value).sortedDescending()
