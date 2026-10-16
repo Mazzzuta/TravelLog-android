@@ -53,7 +53,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
     }
     val context = LocalContext.current
     val version = remember(context) {
-        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "0.9.0"
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1.0.0"
     }
     var showTagsDialog by rememberSaveable { mutableStateOf(false) }
     var showResetDialog by rememberSaveable { mutableStateOf(false) }
@@ -108,7 +108,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
                     p.nickname.firstOrNull()?.uppercase() ?: "П",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
             Spacer(Modifier.width(14.dp))
@@ -159,12 +159,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
         Spacer(Modifier.height(24.dp))
 
         SectionLabel("ЦВЕТОВАЯ СХЕМА")
-        Text(
-            "Выберите готовое оформление или используйте стандартную тему выше",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(10.dp))
         Palettes.additional.chunked(2).forEach { rowItems ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp).height(IntrinsicSize.Min)) {
                 rowItems.forEach { palette ->
@@ -180,6 +174,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
         SettingsCard {
             DropdownSettingRow(
                 title = "Сортировка по умолчанию",
+                titleMinLines = 2,
                 current = SortOption.fromSql(p.defaultSort).label,
                 options = SortOption.entries.map { it.label to { viewModel.setDefaultSort(it) } }
             )
@@ -305,7 +300,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
         AlertDialog(
             onDismissRequest = { showAboutDialog = false },
             title = { Text("TravelLog") },
-            text = { Text("Дневник путешествий с фотографиями и картой.\nВерсия $version") },
+            text = { Text("Дневник ваших путешествий с фотографиями и интерактивной картой картой.") },
             confirmButton = { TextButton(onClick = { showAboutDialog = false }) { Text("Закрыть") } }
         )
     }
@@ -330,13 +325,13 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun DropdownSettingRow(title: String, current: String, options: List<Pair<String, () -> Unit>>) {
+private fun DropdownSettingRow(title: String, current: String, options: List<Pair<String, () -> Unit>>, titleMinLines: Int = 1) {
     var expanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().clickable { expanded = true }.padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+        Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, minLines = titleMinLines)
         Box {
             Text(current, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
