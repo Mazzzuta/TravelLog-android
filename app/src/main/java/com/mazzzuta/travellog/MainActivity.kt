@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
                             Text("Не удалось загрузить оформление и формат даты", color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = { retry++ }) { Text("Повторить") }
                         }
-                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                             // Ждём первого чтения настроек, чтобы при запуске не мелькали чужая палитра и формат даты.
                             if (prefs != null) TravelLogNavHost()
                             else if (!readError) CircularProgressIndicator()

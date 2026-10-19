@@ -189,6 +189,7 @@ fun CreateEntryScreen(
                                 .align(Alignment.TopEnd)
                                 .padding(2.dp)
                                 .size(28.dp)
+                                .clip(CircleShape)
                                 .background(Color.Black.copy(alpha = 0.55f), CircleShape)
                         ) {
                             Icon(
@@ -317,7 +318,7 @@ fun CreateEntryScreen(
                         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
                         contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        modifier = Modifier.padding(vertical = 4.dp).combinedClickable(
+                        modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(8.dp)).combinedClickable(
                             enabled = !state.isDeletingTag && !state.isAddingTag,
                             role = Role.Checkbox, onLongClickLabel = "Удалить тег",
                             onClick = { viewModel.toggleTag(tag.id) },
