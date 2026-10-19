@@ -2,6 +2,7 @@ package com.mazzzuta.travellog.ui.components
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -21,6 +22,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mazzzuta.travellog.navigation.BottomTab
@@ -58,16 +60,11 @@ fun TravelBottomNav(
                     }
                 )
                 if (index == 1) {
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onCreateClick,
-                        icon = {
-                            FloatingActionButton(onClick = onCreateClick, modifier = Modifier.size((48 * scale).dp)) {
-                                Icon(Icons.Default.Add, contentDescription = "Новая запись", modifier = Modifier.size((24 * scale).dp))
-                            }
-                        },
-                        label = null
-                    )
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        FloatingActionButton(onClick = onCreateClick, modifier = Modifier.size((48 * scale).dp)) {
+                            Icon(Icons.Default.Add, contentDescription = "Новая запись", modifier = Modifier.size((24 * scale).dp))
+                        }
+                    }
                 }
             }
             Spacer(Modifier.width(8.dp))

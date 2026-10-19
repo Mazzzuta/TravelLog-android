@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.semantics.SemanticsActions
@@ -27,10 +28,11 @@ class CompactBottomNavTest {
     @Test fun tabsRemainAccessibleAtCompactWidths() {
         val width = mutableStateOf(320.dp)
         var selected: Route? = null
+        var createClicks = 0
         compose.setContent {
             TravelLogTheme(Palettes.LightBase) {
                 Box(Modifier.width(width.value)) {
-                    TravelBottomNav(null, { selected = it }, {})
+                    TravelBottomNav(null, { selected = it }, { createClicks++ })
                 }
             }
         }
@@ -43,6 +45,8 @@ class CompactBottomNavTest {
                 assertFalse("$label overflows at $size dp", layouts.single().hasVisualOverflow)
             }
             compose.runOnIdle { assertEquals(Route.Settings, selected) }
+            compose.onNodeWithContentDescription("Новая запись").assertIsDisplayed().performClick()
+            compose.runOnIdle { assertEquals(listOf(320, 360, 400).indexOf(size) + 1, createClicks) }
         }
     }
 }
