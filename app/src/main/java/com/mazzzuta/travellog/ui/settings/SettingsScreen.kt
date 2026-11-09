@@ -53,7 +53,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
     }
     val context = LocalContext.current
     val version = remember(context) {
-        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1.0.1" +
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1.0.0" +
         ""
     }
     var showTagsDialog by rememberSaveable { mutableStateOf(false) }
