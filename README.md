@@ -25,4 +25,7 @@ TravelLog - личный дневник путешествий для Android. �
 
 ## Установка
 
-Требуется Android 8.0 или новее. APK доступен на [странице релизов](https://github.com/Mazzzuta/TravelLog-android/releases).
+Требуется Android 8.0 или новее. APK доступен на [странице релизов](https://github.com/Mazzzuta/TravelLog-android/releases)
+
+## Сайт
+[Лендинг TravelLog](https://mazzzuta.github.io/Website_TravelLog/)
