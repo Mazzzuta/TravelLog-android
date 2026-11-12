@@ -10,7 +10,7 @@ import com.mazzzuta.travellog.database.TripRepository
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 import com.mazzzuta.travellog.viewmodels.FeedViewModel
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModel
 
 import com.mazzzuta.travellog.utils.GeocoderHelper
 import com.mazzzuta.travellog.utils.LocationHelper
